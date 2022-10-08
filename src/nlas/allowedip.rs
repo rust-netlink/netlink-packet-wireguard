@@ -54,19 +54,28 @@ impl Nla for WgAllowedIpAttrs {
     }
 }
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgAllowedIpAttrs {
+impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
+    for WgAllowedIpAttrs
+{
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
             WGALLOWEDIP_A_UNSPEC => Self::Unspec(payload.to_vec()),
-            WGALLOWEDIP_A_FAMILY => {
-                Self::Family(parse_u16(payload).context("invalid WGALLOWEDIP_A_FAMILY value")?)
-            }
-            WGALLOWEDIP_A_IPADDR => {
-                Self::IpAddr(parse_ip(payload).context("invalid WGALLOWEDIP_A_IPADDR value")?)
-            }
+            WGALLOWEDIP_A_FAMILY => Self::Family(
+                parse_u16(payload)
+                    .context("invalid WGALLOWEDIP_A_FAMILY value")?,
+            ),
+            WGALLOWEDIP_A_IPADDR => Self::IpAddr(
+                parse_ip(payload)
+                    .context("invalid WGALLOWEDIP_A_IPADDR value")?,
+            ),
             WGALLOWEDIP_A_CIDR_MASK => Self::Cidr(payload[0]),
-            kind => return Err(DecodeError::from(format!("invalid NLA kind: {}", kind))),
+            kind => {
+                return Err(DecodeError::from(format!(
+                    "invalid NLA kind: {}",
+                    kind
+                )))
+            }
         })
     }
 }
