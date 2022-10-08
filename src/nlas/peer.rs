@@ -4,13 +4,8 @@ use super::WgAllowedIpAttrs;
 use crate::{
     constants::*,
     raw::{
-        emit_socket_addr,
-        emit_timespec,
-        parse_socket_addr,
-        parse_timespec,
-        SOCKET_ADDR_V4_LEN,
-        SOCKET_ADDR_V6_LEN,
-        TIMESPEC_LEN,
+        emit_socket_addr, emit_timespec, parse_socket_addr, parse_timespec,
+        SOCKET_ADDR_V4_LEN, SOCKET_ADDR_V6_LEN, TIMESPEC_LEN,
     },
 };
 use anyhow::Context;
@@ -21,7 +16,10 @@ use netlink_packet_utils::{
     traits::*,
     DecodeError,
 };
-use std::{convert::TryInto, mem::size_of_val, net::SocketAddr, ops::Deref, time::SystemTime};
+use std::{
+    convert::TryInto, mem::size_of_val, net::SocketAddr, ops::Deref,
+    time::SystemTime,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WgPeer(pub Vec<WgPeerAttrs>);
@@ -110,7 +108,9 @@ impl Nla for WgPeerAttrs {
             WgPeerAttrs::LastHandshake(_) => TIMESPEC_LEN,
             WgPeerAttrs::RxBytes(v) => size_of_val(v),
             WgPeerAttrs::TxBytes(v) => size_of_val(v),
-            WgPeerAttrs::AllowedIps(nlas) => nlas.iter().map(|op| op.buffer_len()).sum(),
+            WgPeerAttrs::AllowedIps(nlas) => {
+                nlas.iter().map(|op| op.buffer_len()).sum()
+            }
             WgPeerAttrs::ProtocolVersion(v) => size_of_val(v),
             WgPeerAttrs::Flags(v) => size_of_val(v),
         }
@@ -122,7 +122,9 @@ impl Nla for WgPeerAttrs {
             WgPeerAttrs::PublicKey(_) => WGPEER_A_PUBLIC_KEY,
             WgPeerAttrs::PresharedKey(_) => WGPEER_A_PRESHARED_KEY,
             WgPeerAttrs::Endpoint(_) => WGPEER_A_ENDPOINT,
-            WgPeerAttrs::PersistentKeepalive(_) => WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL,
+            WgPeerAttrs::PersistentKeepalive(_) => {
+                WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL
+            }
             WgPeerAttrs::LastHandshake(_) => WGPEER_A_LAST_HANDSHAKE_TIME,
             WgPeerAttrs::RxBytes(_) => WGPEER_A_RX_BYTES,
             WgPeerAttrs::TxBytes(_) => WGPEER_A_TX_BYTES,
@@ -138,7 +140,9 @@ impl Nla for WgPeerAttrs {
             WgPeerAttrs::PublicKey(v) => buffer.copy_from_slice(v),
             WgPeerAttrs::PresharedKey(v) => buffer.copy_from_slice(v),
             WgPeerAttrs::Endpoint(v) => emit_socket_addr(v, buffer),
-            WgPeerAttrs::PersistentKeepalive(v) => NativeEndian::write_u16(buffer, *v),
+            WgPeerAttrs::PersistentKeepalive(v) => {
+                NativeEndian::write_u16(buffer, *v)
+            }
             WgPeerAttrs::LastHandshake(v) => emit_timespec(v, buffer),
             WgPeerAttrs::RxBytes(v) => NativeEndian::write_u64(buffer, *v),
             WgPeerAttrs::TxBytes(v) => NativeEndian::write_u64(buffer, *v),
@@ -149,7 +153,9 @@ impl Nla for WgPeerAttrs {
                     len += op.buffer_len();
                 }
             }
-            WgPeerAttrs::ProtocolVersion(v) => NativeEndian::write_u32(buffer, *v),
+            WgPeerAttrs::ProtocolVersion(v) => {
+                NativeEndian::write_u32(buffer, *v)
+            }
             WgPeerAttrs::Flags(v) => NativeEndian::write_u32(buffer, *v),
         }
     }
@@ -164,30 +170,35 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgPeerAttrs {
         let payload = buf.value();
         Ok(match buf.kind() {
             WGPEER_A_UNSPEC => Self::Unspec(payload.to_vec()),
-            WGPEER_A_PUBLIC_KEY => {
-                Self::PublicKey(payload.try_into().context("invalid WGPEER_A_PUBLIC_KEY")?)
-            }
+            WGPEER_A_PUBLIC_KEY => Self::PublicKey(
+                payload.try_into().context("invalid WGPEER_A_PUBLIC_KEY")?,
+            ),
             WGPEER_A_PRESHARED_KEY => Self::PresharedKey(
                 payload
                     .try_into()
                     .context("invalid WGPEER_A_PRESHARED_KEY")?,
             ),
-            WGPEER_A_ENDPOINT => {
-                Self::Endpoint(parse_socket_addr(payload).context("invalid WGPEER_A_ENDPOINT")?)
-            }
-            WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL => Self::PersistentKeepalive(
-                parse_u16(payload)
-                    .context("invalid WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL value")?,
+            WGPEER_A_ENDPOINT => Self::Endpoint(
+                parse_socket_addr(payload)
+                    .context("invalid WGPEER_A_ENDPOINT")?,
             ),
+            WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL => {
+                Self::PersistentKeepalive(parse_u16(payload).context(
+                    "invalid WGPEER_A_PERSISTENT_KEEPALIVE_INTERVAL value",
+                )?)
+            }
             WGPEER_A_LAST_HANDSHAKE_TIME => Self::LastHandshake(
-                parse_timespec(payload).context("invalid WGPEER_A_LAST_HANDSHAKE_TIME")?,
+                parse_timespec(payload)
+                    .context("invalid WGPEER_A_LAST_HANDSHAKE_TIME")?,
             ),
-            WGPEER_A_RX_BYTES => {
-                Self::RxBytes(parse_u64(payload).context("invalid WGPEER_A_RX_BYTES value")?)
-            }
-            WGPEER_A_TX_BYTES => {
-                Self::TxBytes(parse_u64(payload).context("invalid WGPEER_A_TX_BYTES value")?)
-            }
+            WGPEER_A_RX_BYTES => Self::RxBytes(
+                parse_u64(payload)
+                    .context("invalid WGPEER_A_RX_BYTES value")?,
+            ),
+            WGPEER_A_TX_BYTES => Self::TxBytes(
+                parse_u64(payload)
+                    .context("invalid WGPEER_A_TX_BYTES value")?,
+            ),
             WGPEER_A_ALLOWEDIPS => {
                 let error_msg = "failed to parse WGPEER_A_ALLOWEDIPS";
                 let mut ips = Vec::new();
@@ -196,7 +207,8 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgPeerAttrs {
                     let mut group = Vec::new();
                     for nla in NlasIterator::new(nlas.value()) {
                         let nla = &nla.context(error_msg)?;
-                        let parsed = WgAllowedIpAttrs::parse(nla).context(error_msg)?;
+                        let parsed =
+                            WgAllowedIpAttrs::parse(nla).context(error_msg)?;
                         group.push(parsed);
                     }
                     ips.push(WgAllowedIp(group));
@@ -204,12 +216,18 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgPeerAttrs {
                 Self::AllowedIps(ips)
             }
             WGPEER_A_PROTOCOL_VERSION => Self::ProtocolVersion(
-                parse_u32(payload).context("invalid WGPEER_A_PROTOCOL_VERSION value")?,
+                parse_u32(payload)
+                    .context("invalid WGPEER_A_PROTOCOL_VERSION value")?,
             ),
-            WGPEER_A_FLAGS => {
-                Self::Flags(parse_u32(payload).context("invalid WGPEER_A_FLAGS value")?)
+            WGPEER_A_FLAGS => Self::Flags(
+                parse_u32(payload).context("invalid WGPEER_A_FLAGS value")?,
+            ),
+            kind => {
+                return Err(DecodeError::from(format!(
+                    "invalid NLA kind: {}",
+                    kind
+                )))
             }
-            kind => return Err(DecodeError::from(format!("invalid NLA kind: {}", kind))),
         })
     }
 }

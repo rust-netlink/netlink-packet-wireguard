@@ -2,12 +2,13 @@
 
 use futures::StreamExt;
 use genetlink::new_connection;
-use netlink_packet_core::{NetlinkMessage, NetlinkPayload, NLM_F_DUMP, NLM_F_REQUEST};
+use netlink_packet_core::{
+    NetlinkMessage, NetlinkPayload, NLM_F_DUMP, NLM_F_REQUEST,
+};
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
     nlas::{WgAllowedIpAttrs, WgDeviceAttrs, WgPeerAttrs},
-    Wireguard,
-    WireguardCmd,
+    Wireguard, WireguardCmd,
 };
 use std::env::args;
 
@@ -24,10 +25,11 @@ async fn main() {
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
 
-    let genlmsg: GenlMessage<Wireguard> = GenlMessage::from_payload(Wireguard {
-        cmd: WireguardCmd::GetDevice,
-        nlas: vec![WgDeviceAttrs::IfName(argv[1].clone())],
-    });
+    let genlmsg: GenlMessage<Wireguard> =
+        GenlMessage::from_payload(Wireguard {
+            cmd: WireguardCmd::GetDevice,
+            nlas: vec![WgDeviceAttrs::IfName(argv[1].clone())],
+        });
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_DUMP;
 
@@ -53,7 +55,9 @@ fn print_wg_payload(wg: Wireguard) {
             WgDeviceAttrs::IfIndex(v) => println!("IfIndex: {}", v),
             WgDeviceAttrs::IfName(v) => println!("IfName: {}", v),
             WgDeviceAttrs::PrivateKey(_) => println!("PrivateKey: (hidden)"),
-            WgDeviceAttrs::PublicKey(v) => println!("PublicKey: {}", base64::encode(v)),
+            WgDeviceAttrs::PublicKey(v) => {
+                println!("PublicKey: {}", base64::encode(v))
+            }
             WgDeviceAttrs::ListenPort(v) => println!("ListenPort: {}", v),
             WgDeviceAttrs::Fwmark(v) => println!("Fwmark: {}", v),
             WgDeviceAttrs::Peers(nlas) => {
@@ -70,11 +74,19 @@ fn print_wg_payload(wg: Wireguard) {
 fn print_wg_peer(nlas: &[WgPeerAttrs]) {
     for nla in nlas {
         match nla {
-            WgPeerAttrs::PublicKey(v) => println!("  PublicKey: {}", base64::encode(v)),
-            WgPeerAttrs::PresharedKey(_) => println!("  PresharedKey: (hidden)"),
+            WgPeerAttrs::PublicKey(v) => {
+                println!("  PublicKey: {}", base64::encode(v))
+            }
+            WgPeerAttrs::PresharedKey(_) => {
+                println!("  PresharedKey: (hidden)")
+            }
             WgPeerAttrs::Endpoint(v) => println!("  Endpoint: {}", v),
-            WgPeerAttrs::PersistentKeepalive(v) => println!("  PersistentKeepalive: {}", v),
-            WgPeerAttrs::LastHandshake(v) => println!("  LastHandshake: {:?}", v),
+            WgPeerAttrs::PersistentKeepalive(v) => {
+                println!("  PersistentKeepalive: {}", v)
+            }
+            WgPeerAttrs::LastHandshake(v) => {
+                println!("  LastHandshake: {:?}", v)
+            }
             WgPeerAttrs::RxBytes(v) => println!("  RxBytes: {}", v),
             WgPeerAttrs::TxBytes(v) => println!("  TxBytes: {}", v),
             WgPeerAttrs::AllowedIps(nlas) => {

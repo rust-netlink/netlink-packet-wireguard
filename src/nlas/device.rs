@@ -37,7 +37,9 @@ impl Nla for WgDeviceAttrs {
             WgDeviceAttrs::PublicKey(v) => size_of_val(v),
             WgDeviceAttrs::ListenPort(v) => size_of_val(v),
             WgDeviceAttrs::Fwmark(v) => size_of_val(v),
-            WgDeviceAttrs::Peers(nlas) => nlas.iter().map(|op| op.buffer_len()).sum(),
+            WgDeviceAttrs::Peers(nlas) => {
+                nlas.iter().map(|op| op.buffer_len()).sum()
+            }
             WgDeviceAttrs::Flags(v) => size_of_val(v),
         }
     }
@@ -84,17 +86,21 @@ impl Nla for WgDeviceAttrs {
     }
 }
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgDeviceAttrs {
+impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
+    for WgDeviceAttrs
+{
     fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
             WGDEVICE_A_UNSPEC => Self::Unspec(payload.to_vec()),
-            WGDEVICE_A_IFINDEX => {
-                Self::IfIndex(parse_u32(payload).context("invalid WGDEVICE_A_IFINDEX value")?)
-            }
-            WGDEVICE_A_IFNAME => {
-                Self::IfName(parse_string(payload).context("invalid WGDEVICE_A_IFNAME value")?)
-            }
+            WGDEVICE_A_IFINDEX => Self::IfIndex(
+                parse_u32(payload)
+                    .context("invalid WGDEVICE_A_IFINDEX value")?,
+            ),
+            WGDEVICE_A_IFNAME => Self::IfName(
+                parse_string(payload)
+                    .context("invalid WGDEVICE_A_IFNAME value")?,
+            ),
             WGDEVICE_A_PRIVATE_KEY => Self::PrivateKey(
                 payload
                     .try_into()
@@ -106,11 +112,13 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgDeviceAttrs 
                     .context("invalid WGDEVICE_A_PUBLIC_KEY value")?,
             ),
             WGDEVICE_A_LISTEN_PORT => Self::ListenPort(
-                parse_u16(payload).context("invalid WGDEVICE_A_LISTEN_PORT value")?,
+                parse_u16(payload)
+                    .context("invalid WGDEVICE_A_LISTEN_PORT value")?,
             ),
-            WGDEVICE_A_FWMARK => {
-                Self::Fwmark(parse_u32(payload).context("invalid WGDEVICE_A_FWMARK value")?)
-            }
+            WGDEVICE_A_FWMARK => Self::Fwmark(
+                parse_u32(payload)
+                    .context("invalid WGDEVICE_A_FWMARK value")?,
+            ),
             WGDEVICE_A_PEERS => {
                 let error_msg = "failed to parse WGDEVICE_A_PEERS";
                 let mut peers = Vec::new();
@@ -119,17 +127,23 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgDeviceAttrs 
                     let mut group = Vec::new();
                     for nla in NlasIterator::new(nlas.value()) {
                         let nla = &nla.context(error_msg)?;
-                        let parsed = WgPeerAttrs::parse(nla).context(error_msg)?;
+                        let parsed =
+                            WgPeerAttrs::parse(nla).context(error_msg)?;
                         group.push(parsed);
                     }
                     peers.push(WgPeer(group));
                 }
                 Self::Peers(peers)
             }
-            WGDEVICE_A_FLAGS => {
-                Self::Flags(parse_u32(payload).context("invalid WGDEVICE_A_FLAGS value")?)
+            WGDEVICE_A_FLAGS => Self::Flags(
+                parse_u32(payload).context("invalid WGDEVICE_A_FLAGS value")?,
+            ),
+            kind => {
+                return Err(DecodeError::from(format!(
+                    "invalid NLA kind: {}",
+                    kind
+                )))
             }
-            kind => return Err(DecodeError::from(format!("invalid NLA kind: {}", kind))),
         })
     }
 }

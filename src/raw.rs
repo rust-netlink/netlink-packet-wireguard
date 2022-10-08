@@ -165,8 +165,14 @@ pub fn parse_socket_addr(buf: &[u8]) -> Result<SocketAddr, DecodeError> {
 pub fn emit_timespec(time: &SystemTime, buf: &mut [u8]) {
     match time.duration_since(SystemTime::UNIX_EPOCH) {
         Ok(epoch_elapsed) => {
-            NativeEndian::write_i64(&mut buf[..8], epoch_elapsed.as_secs() as i64);
-            NativeEndian::write_i64(&mut buf[8..16], epoch_elapsed.subsec_nanos() as i64);
+            NativeEndian::write_i64(
+                &mut buf[..8],
+                epoch_elapsed.as_secs() as i64,
+            );
+            NativeEndian::write_i64(
+                &mut buf[8..16],
+                epoch_elapsed.subsec_nanos() as i64,
+            );
         }
         Err(e) => {
             // This method is supposed to not fail so just log an
@@ -186,8 +192,10 @@ pub fn parse_timespec(buf: &[u8]) -> Result<SystemTime, DecodeError> {
             buf
         )));
     }
-    let epoch_elapsed_s = Duration::from_secs(NativeEndian::read_u64(&buf[..8]));
-    let epoch_elapsed_ns = Duration::from_nanos(NativeEndian::read_u64(&buf[8..16]));
+    let epoch_elapsed_s =
+        Duration::from_secs(NativeEndian::read_u64(&buf[..8]));
+    let epoch_elapsed_ns =
+        Duration::from_nanos(NativeEndian::read_u64(&buf[8..16]));
     Ok(SystemTime::UNIX_EPOCH + epoch_elapsed_s + epoch_elapsed_ns)
 }
 
