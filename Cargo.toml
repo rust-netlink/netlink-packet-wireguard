@@ -7,7 +7,7 @@ homepage = "https://github.com/rust-netlink/netlink"
 repository = "https://github.com/rust-netlink/netlink"
 keywords = ["wireguard", "netlink", "linux"]
 license = "MIT"
-readme = "../README.md"
+readme = "README.md"
 description = "Wireguard generic netlink packet definitions"
 
 [dependencies]
