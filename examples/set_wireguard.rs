@@ -8,8 +8,13 @@ use netlink_packet_core::{
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::constants::*;
-use netlink_packet_wireguard::{nlas::WgDeviceAttrs, Wireguard, WireguardCmd};
+use netlink_packet_wireguard::{
+    nlas::{WgAllowedIp, WgAllowedIpAttrs, WgDeviceAttrs, WgPeer, WgPeerAttrs},
+    Wireguard, WireguardCmd,
+};
+use std::convert::TryInto;
 use std::env::args;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 #[tokio::main]
 async fn main() {
@@ -25,6 +30,11 @@ async fn main() {
     // This can be done with `ip link <name> type wireguard` command.
     let name = argv[1].clone();
     let priv_key = generate_priv_key();
+    let peer_pub_key: [u8; WG_KEY_LEN] =
+        base64::decode("8bdQrVLqiw3ZoHCucNh1YfH0iCWuyStniRr8t7H24Fk=")
+            .unwrap()
+            .try_into()
+            .unwrap();
 
     let (connection, mut handle, _) = new_connection().unwrap();
     let _ = tokio::spawn(connection);
@@ -33,6 +43,28 @@ async fn main() {
         WgDeviceAttrs::IfName(name),
         WgDeviceAttrs::PrivateKey(priv_key),
         WgDeviceAttrs::ListenPort(51820),
+        WgDeviceAttrs::Fwmark(0),
+        WgDeviceAttrs::Peers(vec![WgPeer(vec![
+            WgPeerAttrs::PublicKey(peer_pub_key),
+            WgPeerAttrs::Endpoint(SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(10, 10, 10, 1)),
+                51820,
+            )),
+            WgPeerAttrs::AllowedIps(vec![
+                WgAllowedIp(vec![
+                    // ipv4 0.0.0.0/0
+                    WgAllowedIpAttrs::Family(AF_INET),
+                    WgAllowedIpAttrs::IpAddr("0.0.0.0".parse().unwrap()),
+                    WgAllowedIpAttrs::Cidr(0),
+                ]),
+                WgAllowedIp(vec![
+                    // ipv6 ::/0
+                    WgAllowedIpAttrs::Family(AF_INET6),
+                    WgAllowedIpAttrs::IpAddr("::".parse().unwrap()),
+                    WgAllowedIpAttrs::Cidr(0),
+                ]),
+            ]),
+        ])]),
     ];
 
     let genlmsg: GenlMessage<Wireguard> =
