@@ -1,8 +1,8 @@
 [package]
 name = "netlink-packet-wireguard"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Leo <leo881003@gmail.com>", "Jake McGinty <me@jake.su>"]
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/rust-netlink/netlink-packet-wireguard"
 repository = "https://github.com/rust-netlink/netlink-packet-wireguard"
 keywords = ["wireguard", "netlink", "linux"]
