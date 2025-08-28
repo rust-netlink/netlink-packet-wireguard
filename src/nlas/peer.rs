@@ -8,13 +8,9 @@ use crate::{
         SOCKET_ADDR_V4_LEN, SOCKET_ADDR_V6_LEN, TIMESPEC_LEN,
     },
 };
-use anyhow::Context;
-use byteorder::{ByteOrder, NativeEndian};
-use netlink_packet_utils::{
-    nla::{Nla, NlaBuffer, NlasIterator},
-    parsers::*,
-    traits::*,
-    DecodeError,
+use netlink_packet_core::{
+    emit_u16, emit_u32, emit_u64, parse_u16, parse_u32, parse_u64, DecodeError,
+    Emitable, ErrorContext, Nla, NlaBuffer, NlasIterator, Parseable,
 };
 use std::{
     convert::TryInto, mem::size_of_val, net::SocketAddr, ops::Deref,
@@ -141,11 +137,11 @@ impl Nla for WgPeerAttrs {
             WgPeerAttrs::PresharedKey(v) => buffer.copy_from_slice(v),
             WgPeerAttrs::Endpoint(v) => emit_socket_addr(v, buffer),
             WgPeerAttrs::PersistentKeepalive(v) => {
-                NativeEndian::write_u16(buffer, *v)
+                emit_u16(buffer, *v).unwrap()
             }
             WgPeerAttrs::LastHandshake(v) => emit_timespec(v, buffer),
-            WgPeerAttrs::RxBytes(v) => NativeEndian::write_u64(buffer, *v),
-            WgPeerAttrs::TxBytes(v) => NativeEndian::write_u64(buffer, *v),
+            WgPeerAttrs::RxBytes(v) => emit_u64(buffer, *v).unwrap(),
+            WgPeerAttrs::TxBytes(v) => emit_u64(buffer, *v).unwrap(),
             WgPeerAttrs::AllowedIps(nlas) => {
                 let mut len = 0;
                 for op in nlas {
@@ -153,10 +149,8 @@ impl Nla for WgPeerAttrs {
                     len += op.buffer_len();
                 }
             }
-            WgPeerAttrs::ProtocolVersion(v) => {
-                NativeEndian::write_u32(buffer, *v)
-            }
-            WgPeerAttrs::Flags(v) => NativeEndian::write_u32(buffer, *v),
+            WgPeerAttrs::ProtocolVersion(v) => emit_u32(buffer, *v).unwrap(),
+            WgPeerAttrs::Flags(v) => emit_u32(buffer, *v).unwrap(),
         }
     }
 
@@ -171,11 +165,19 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>> for WgPeerAttrs {
         Ok(match buf.kind() {
             WGPEER_A_UNSPEC => Self::Unspec(payload.to_vec()),
             WGPEER_A_PUBLIC_KEY => Self::PublicKey(
-                payload.try_into().context("invalid WGPEER_A_PUBLIC_KEY")?,
+                payload
+                    .try_into()
+                    .map_err(|e: std::array::TryFromSliceError| {
+                        DecodeError::from(e.to_string())
+                    })
+                    .context("invalid WGPEER_A_PUBLIC_KEY")?,
             ),
             WGPEER_A_PRESHARED_KEY => Self::PresharedKey(
                 payload
                     .try_into()
+                    .map_err(|e: std::array::TryFromSliceError| {
+                        DecodeError::from(e.to_string())
+                    })
                     .context("invalid WGPEER_A_PRESHARED_KEY")?,
             ),
             WGPEER_A_ENDPOINT => Self::Endpoint(

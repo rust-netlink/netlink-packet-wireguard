@@ -6,8 +6,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use byteorder::{BigEndian, ByteOrder, NativeEndian};
-use netlink_packet_utils::DecodeError;
+use netlink_packet_core::{
+    emit_i64, emit_u16, emit_u16_be, emit_u32, parse_u16_be, parse_u32,
+    parse_u64, DecodeError,
+};
 
 use crate::constants::{AF_INET, AF_INET6};
 
@@ -34,13 +36,13 @@ pub const TIMESPEC_LEN: usize = 16;
 fn parse_socket_addr_v6(payload: &[u8]) -> SocketAddrV6 {
     assert_eq!(payload.len(), SOCKET_ADDR_V6_LEN);
     // We don't need the address family to build a SocketAddrv6
-    // let address_family = NativeEndian::read_u16(&payload[..2]);
-    let port = BigEndian::read_u16(&payload[2..4]);
-    let flow_info = NativeEndian::read_u32(&payload[4..8]);
+    // let address_family = parse_u16(&payload[..2]);
+    let port = parse_u16_be(&payload[2..4]).unwrap();
+    let flow_info = parse_u32(&payload[4..8]).unwrap();
     // We know we have exactly 16 bytes so this won't fail
     let ip_bytes = <[u8; 16]>::try_from(&payload[8..24]).unwrap();
     let ip = Ipv6Addr::from(ip_bytes);
-    let scope_id = NativeEndian::read_u32(&payload[24..28]);
+    let scope_id = parse_u32(&payload[24..28]).unwrap();
     SocketAddrV6::new(ip, port, flow_info, scope_id)
 }
 
@@ -58,8 +60,8 @@ fn parse_socket_addr_v6(payload: &[u8]) -> SocketAddrV6 {
 fn parse_socket_addr_v4(payload: &[u8]) -> SocketAddrV4 {
     assert_eq!(payload.len(), 16);
     // We don't need the address family to build a SocketAddr4v
-    // let address_family = NativeEndian::read_u16(&payload[..2]);
-    let port = BigEndian::read_u16(&payload[2..4]);
+    // let address_family = parse_u16(&payload[..2]).unwrap();
+    let port = parse_u16_be(&payload[2..4]).unwrap();
     // We know we have exactly 4 bytes so this won't fail
     let ip_bytes = <[u8; 4]>::try_from(&payload[4..8]).unwrap();
     let ip = Ipv4Addr::from(ip_bytes);
@@ -112,8 +114,8 @@ pub fn emit_ip(addr: &IpAddr, buf: &mut [u8]) {
 /// Note that this adds 8 bytes of padding so the buffer must be large
 /// enough to account for them.
 fn emit_socket_addr_v4(addr: &SocketAddrV4, buf: &mut [u8]) {
-    NativeEndian::write_u16(&mut buf[..2], AF_INET);
-    BigEndian::write_u16(&mut buf[2..4], addr.port());
+    emit_u16(&mut buf[..2], AF_INET).unwrap();
+    emit_u16_be(&mut buf[2..4], addr.port()).unwrap();
     buf[4..8].copy_from_slice(addr.ip().octets().as_slice());
     // padding
     buf[8..16].copy_from_slice([0; 8].as_slice());
@@ -136,11 +138,11 @@ fn emit_socket_addr_v4(addr: &SocketAddrV4, buf: &mut [u8]) {
 /// ```
 /// `sockaddr_in6` is 4 bytes aligned (28 bytes) so there's no padding.
 fn emit_socket_addr_v6(addr: &SocketAddrV6, buf: &mut [u8]) {
-    NativeEndian::write_u16(&mut buf[..2], AF_INET6);
-    BigEndian::write_u16(&mut buf[2..4], addr.port());
-    NativeEndian::write_u32(&mut buf[4..8], addr.flowinfo());
+    emit_u16(&mut buf[..2], AF_INET6).unwrap();
+    emit_u16_be(&mut buf[2..4], addr.port()).unwrap();
+    emit_u32(&mut buf[4..8], addr.flowinfo()).unwrap();
     buf[8..24].copy_from_slice(addr.ip().octets().as_slice());
-    NativeEndian::write_u32(&mut buf[24..28], addr.scope_id());
+    emit_u32(&mut buf[24..28], addr.scope_id()).unwrap();
 }
 
 pub fn emit_socket_addr(addr: &SocketAddr, buf: &mut [u8]) {
@@ -165,22 +167,17 @@ pub fn parse_socket_addr(buf: &[u8]) -> Result<SocketAddr, DecodeError> {
 pub fn emit_timespec(time: &SystemTime, buf: &mut [u8]) {
     match time.duration_since(SystemTime::UNIX_EPOCH) {
         Ok(epoch_elapsed) => {
-            NativeEndian::write_i64(
-                &mut buf[..8],
-                epoch_elapsed.as_secs() as i64,
-            );
-            NativeEndian::write_i64(
-                &mut buf[8..16],
-                epoch_elapsed.subsec_nanos() as i64,
-            );
+            emit_i64(&mut buf[..8], epoch_elapsed.as_secs() as i64).unwrap();
+            emit_i64(&mut buf[8..16], epoch_elapsed.subsec_nanos() as i64)
+                .unwrap();
         }
         Err(e) => {
             // This method is supposed to not fail so just log an
             // error. If we want such errors to be handled by the
             // caller, we shouldn't use `SystemTime`.
             error!("error while emitting timespec: {:?}", e);
-            NativeEndian::write_i64(&mut buf[..8], 0_i64);
-            NativeEndian::write_i64(&mut buf[8..16], 0_i64);
+            emit_i64(&mut buf[..8], 0_i64).unwrap();
+            emit_i64(&mut buf[8..16], 0_i64).unwrap();
         }
     }
 }
@@ -192,10 +189,9 @@ pub fn parse_timespec(buf: &[u8]) -> Result<SystemTime, DecodeError> {
             buf
         )));
     }
-    let epoch_elapsed_s =
-        Duration::from_secs(NativeEndian::read_u64(&buf[..8]));
+    let epoch_elapsed_s = Duration::from_secs(parse_u64(&buf[..8]).unwrap());
     let epoch_elapsed_ns =
-        Duration::from_nanos(NativeEndian::read_u64(&buf[8..16]));
+        Duration::from_nanos(parse_u64(&buf[8..16]).unwrap());
     Ok(SystemTime::UNIX_EPOCH + epoch_elapsed_s + epoch_elapsed_ns)
 }
 

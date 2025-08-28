@@ -4,13 +4,9 @@ use crate::{
     constants::*,
     nlas::{WgPeer, WgPeerAttrs},
 };
-use anyhow::Context;
-use byteorder::{ByteOrder, NativeEndian};
-use netlink_packet_utils::{
-    nla::{Nla, NlaBuffer, NlasIterator},
-    parsers::*,
-    traits::*,
-    DecodeError,
+use netlink_packet_core::{
+    emit_u16, emit_u32, parse_string, parse_u16, parse_u32, DecodeError,
+    Emitable, ErrorContext, Nla, NlaBuffer, NlasIterator, Parseable,
 };
 use std::{convert::TryInto, mem::size_of_val};
 
@@ -32,7 +28,7 @@ impl Nla for WgDeviceAttrs {
         match self {
             WgDeviceAttrs::Unspec(bytes) => bytes.len(),
             WgDeviceAttrs::IfIndex(v) => size_of_val(v),
-            WgDeviceAttrs::IfName(v) => v.as_bytes().len() + 1,
+            WgDeviceAttrs::IfName(v) => v.len() + 1,
             WgDeviceAttrs::PrivateKey(v) => size_of_val(v),
             WgDeviceAttrs::PublicKey(v) => size_of_val(v),
             WgDeviceAttrs::ListenPort(v) => size_of_val(v),
@@ -61,15 +57,15 @@ impl Nla for WgDeviceAttrs {
     fn emit_value(&self, buffer: &mut [u8]) {
         match self {
             WgDeviceAttrs::Unspec(bytes) => buffer.copy_from_slice(bytes),
-            WgDeviceAttrs::IfIndex(v) => NativeEndian::write_u32(buffer, *v),
+            WgDeviceAttrs::IfIndex(v) => emit_u32(buffer, *v).unwrap(),
             WgDeviceAttrs::IfName(s) => {
                 buffer[..s.len()].copy_from_slice(s.as_bytes());
                 buffer[s.len()] = 0;
             }
             WgDeviceAttrs::PrivateKey(v) => buffer.copy_from_slice(v),
             WgDeviceAttrs::PublicKey(v) => buffer.copy_from_slice(v),
-            WgDeviceAttrs::ListenPort(v) => NativeEndian::write_u16(buffer, *v),
-            WgDeviceAttrs::Fwmark(v) => NativeEndian::write_u32(buffer, *v),
+            WgDeviceAttrs::ListenPort(v) => emit_u16(buffer, *v).unwrap(),
+            WgDeviceAttrs::Fwmark(v) => emit_u32(buffer, *v).unwrap(),
             WgDeviceAttrs::Peers(nlas) => {
                 let mut len = 0;
                 for op in nlas {
@@ -77,7 +73,7 @@ impl Nla for WgDeviceAttrs {
                     len += op.buffer_len();
                 }
             }
-            WgDeviceAttrs::Flags(v) => NativeEndian::write_u32(buffer, *v),
+            WgDeviceAttrs::Flags(v) => emit_u32(buffer, *v).unwrap(),
         }
     }
 
@@ -104,11 +100,17 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
             WGDEVICE_A_PRIVATE_KEY => Self::PrivateKey(
                 payload
                     .try_into()
+                    .map_err(|e: std::array::TryFromSliceError| {
+                        DecodeError::from(e.to_string())
+                    })
                     .context("invalid WGDEVICE_A_PRIVATE_KEY value")?,
             ),
             WGDEVICE_A_PUBLIC_KEY => Self::PublicKey(
                 payload
                     .try_into()
+                    .map_err(|e: std::array::TryFromSliceError| {
+                        DecodeError::from(e.to_string())
+                    })
                     .context("invalid WGDEVICE_A_PUBLIC_KEY value")?,
             ),
             WGDEVICE_A_LISTEN_PORT => Self::ListenPort(

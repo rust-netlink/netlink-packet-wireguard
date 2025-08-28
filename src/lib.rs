@@ -4,9 +4,11 @@
 extern crate log;
 
 use crate::constants::*;
-use anyhow::Context;
+use netlink_packet_core::{
+    DecodeError, Emitable, ErrorContext, NlasIterator, Parseable,
+    ParseableParametrized,
+};
 use netlink_packet_generic::{GenlFamily, GenlHeader};
-use netlink_packet_utils::{nla::NlasIterator, traits::*, DecodeError};
 use nlas::WgDeviceAttrs;
 use std::convert::{TryFrom, TryInto};
 

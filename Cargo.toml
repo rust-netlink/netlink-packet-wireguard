@@ -11,19 +11,16 @@ readme = "README.md"
 description = "Wireguard generic netlink packet definitions"
 
 [dependencies]
-anyhow = "1.0.42"
-byteorder = "1.4.3"
 libc = "0.2.98"
 log = "0.4.14"
-netlink-packet-generic = { version = "0.3.3" }
-netlink-packet-utils = { version = "0.5.2" }
+netlink-packet-generic = { version = "0.4.0" }
+netlink-packet-core = { version = "0.8.0" }
 
 [dev-dependencies]
 base64 = "0.13.0"
 env_logger = "0.10.0"
 futures = "0.3.16"
 getrandom = "0.2.10"
-netlink-packet-core = { version = "0.7.0" }
-netlink-proto = { version = "0.11.2" }
-genetlink = { version = "0.2.5" }
+netlink-proto = { version = "0.12" }
+genetlink = { version = "0.2.6" }
 tokio = { version = "1.9.0", features = ["macros", "rt-multi-thread"] }

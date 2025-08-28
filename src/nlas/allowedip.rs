@@ -5,13 +5,8 @@ use crate::{
     raw::{emit_ip, parse_ip, IPV4_LEN, IPV6_LEN},
 };
 
-use anyhow::Context;
-use byteorder::{ByteOrder, NativeEndian};
-use netlink_packet_utils::{
-    nla::{Nla, NlaBuffer},
-    parsers::*,
-    traits::*,
-    DecodeError,
+use netlink_packet_core::{
+    emit_u16, parse_u16, DecodeError, ErrorContext, Nla, NlaBuffer, Parseable,
 };
 use std::{mem::size_of_val, net::IpAddr};
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,7 +42,7 @@ impl Nla for WgAllowedIpAttrs {
     fn emit_value(&self, buffer: &mut [u8]) {
         match self {
             WgAllowedIpAttrs::Unspec(bytes) => buffer.copy_from_slice(bytes),
-            WgAllowedIpAttrs::Family(v) => NativeEndian::write_u16(buffer, *v),
+            WgAllowedIpAttrs::Family(v) => emit_u16(buffer, *v).unwrap(),
             WgAllowedIpAttrs::IpAddr(v) => emit_ip(v, buffer),
             WgAllowedIpAttrs::Cidr(v) => buffer[0] = *v,
         }
