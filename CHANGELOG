@@ -1,4 +1,25 @@
 # Changelog
+## [0.3.0] - 2026-01-26
+### Breaking changes
+ - Rewrite to align with netlink-packet-route code style. (3067a39)
+     - All netlink attribute are marked as `#[non_exhaustive]`.
+     - Renamed `Wireguard` to `WireguardMessage`.
+     - Renamed `WgDeviceAttrs` to `WireguardAttribute`.
+     - Renamed `WgAllowedIp` to `WireguardAllowedIp`.
+     - Renamed `WgPeerAttrs` to `WireguardPeer`.
+     - Renamed `WgPeer` to `WireguardPeerAttribute`.
+     - Will not expose any constants.
+     - Changed the use of `std::time::SystemTime` to self-defined
+       `WireguardTimeSpec`.
+     - Do not raise error for unknown attribute but store in
+       `Self::Other(DefaultNla)`.
+
+### New features
+ - N/A
+
+### Bug fixes
+ - N/A
+
 ## [0.2.4] - 2023-07-10
 ### Breaking changes
  - N/A
