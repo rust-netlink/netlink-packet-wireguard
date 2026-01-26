@@ -1,24 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pub const AF_INET: u16 = libc::AF_INET as u16;
-pub const AF_INET6: u16 = libc::AF_INET6 as u16;
-
-pub const WG_KEY_LEN: usize = 32;
-
-pub const WG_CMD_GET_DEVICE: u8 = 0;
-pub const WG_CMD_SET_DEVICE: u8 = 1;
-
 pub const WGDEVICE_F_REPLACE_PEERS: u32 = 1 << 0;
-
-pub const WGDEVICE_A_UNSPEC: u16 = 0;
-pub const WGDEVICE_A_IFINDEX: u16 = 1;
-pub const WGDEVICE_A_IFNAME: u16 = 2;
-pub const WGDEVICE_A_PRIVATE_KEY: u16 = 3;
-pub const WGDEVICE_A_PUBLIC_KEY: u16 = 4;
-pub const WGDEVICE_A_FLAGS: u16 = 5;
-pub const WGDEVICE_A_LISTEN_PORT: u16 = 6;
-pub const WGDEVICE_A_FWMARK: u16 = 7;
-pub const WGDEVICE_A_PEERS: u16 = 8;
 
 pub const WGPEER_F_REMOVE_ME: u32 = 1 << 0;
 pub const WGPEER_F_REPLACE_ALLOWEDIPS: u32 = 1 << 1;

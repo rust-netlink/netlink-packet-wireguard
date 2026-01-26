@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+use std::env::args;
+
 use futures::StreamExt;
 use genetlink::new_connection;
 use netlink_packet_core::{
@@ -7,10 +9,9 @@ use netlink_packet_core::{
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    nlas::{WgAllowedIpAttrs, WgDeviceAttrs, WgPeerAttrs},
-    Wireguard, WireguardCmd,
+    WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
+    WireguardPeerAttribute,
 };
-use std::env::args;
 
 #[tokio::main]
 async fn main() {
@@ -25,10 +26,10 @@ async fn main() {
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
 
-    let genlmsg: GenlMessage<Wireguard> =
-        GenlMessage::from_payload(Wireguard {
+    let genlmsg: GenlMessage<WireguardMessage> =
+        GenlMessage::from_payload(WireguardMessage {
             cmd: WireguardCmd::GetDevice,
-            nlas: vec![WgDeviceAttrs::IfName(argv[1].clone())],
+            attributes: vec![WireguardAttribute::IfName(argv[1].clone())],
         });
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_DUMP;
@@ -49,19 +50,21 @@ async fn main() {
     }
 }
 
-fn print_wg_payload(wg: Wireguard) {
-    for nla in &wg.nlas {
-        match nla {
-            WgDeviceAttrs::IfIndex(v) => println!("IfIndex: {}", v),
-            WgDeviceAttrs::IfName(v) => println!("IfName: {}", v),
-            WgDeviceAttrs::PrivateKey(_) => println!("PrivateKey: (hidden)"),
-            WgDeviceAttrs::PublicKey(v) => {
+fn print_wg_payload(wg: WireguardMessage) {
+    for attr in &wg.attributes {
+        match attr {
+            WireguardAttribute::IfIndex(v) => println!("IfIndex: {}", v),
+            WireguardAttribute::IfName(v) => println!("IfName: {}", v),
+            WireguardAttribute::PrivateKey(_) => {
+                println!("PrivateKey: (hidden)")
+            }
+            WireguardAttribute::PublicKey(v) => {
                 println!("PublicKey: {}", base64::encode(v))
             }
-            WgDeviceAttrs::ListenPort(v) => println!("ListenPort: {}", v),
-            WgDeviceAttrs::Fwmark(v) => println!("Fwmark: {}", v),
-            WgDeviceAttrs::Peers(nlas) => {
-                for peer in nlas {
+            WireguardAttribute::ListenPort(v) => println!("ListenPort: {}", v),
+            WireguardAttribute::Fwmark(v) => println!("Fwmark: {}", v),
+            WireguardAttribute::Peers(peers) => {
+                for peer in peers {
                     println!("Peer: ");
                     print_wg_peer(peer);
                 }
@@ -71,26 +74,28 @@ fn print_wg_payload(wg: Wireguard) {
     }
 }
 
-fn print_wg_peer(nlas: &[WgPeerAttrs]) {
-    for nla in nlas {
-        match nla {
-            WgPeerAttrs::PublicKey(v) => {
+fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
+    for attr in attrs {
+        match attr {
+            WireguardPeerAttribute::PublicKey(v) => {
                 println!("  PublicKey: {}", base64::encode(v))
             }
-            WgPeerAttrs::PresharedKey(_) => {
+            WireguardPeerAttribute::PresharedKey(_) => {
                 println!("  PresharedKey: (hidden)")
             }
-            WgPeerAttrs::Endpoint(v) => println!("  Endpoint: {}", v),
-            WgPeerAttrs::PersistentKeepalive(v) => {
+            WireguardPeerAttribute::Endpoint(v) => {
+                println!("  Endpoint: {}", v)
+            }
+            WireguardPeerAttribute::PersistentKeepalive(v) => {
                 println!("  PersistentKeepalive: {}", v)
             }
-            WgPeerAttrs::LastHandshake(v) => {
+            WireguardPeerAttribute::LastHandshake(v) => {
                 println!("  LastHandshake: {:?}", v)
             }
-            WgPeerAttrs::RxBytes(v) => println!("  RxBytes: {}", v),
-            WgPeerAttrs::TxBytes(v) => println!("  TxBytes: {}", v),
-            WgPeerAttrs::AllowedIps(nlas) => {
-                for ip in nlas {
+            WireguardPeerAttribute::RxBytes(v) => println!("  RxBytes: {}", v),
+            WireguardPeerAttribute::TxBytes(v) => println!("  TxBytes: {}", v),
+            WireguardPeerAttribute::AllowedIps(ips) => {
+                for ip in ips {
                     print_wg_allowedip(ip);
                 }
             }
@@ -99,16 +104,16 @@ fn print_wg_peer(nlas: &[WgPeerAttrs]) {
     }
 }
 
-fn print_wg_allowedip(nlas: &[WgAllowedIpAttrs]) -> Option<()> {
+fn print_wg_allowedip(nlas: &[WireguardAllowedIpAttr]) -> Option<()> {
     let ipaddr = nlas.iter().find_map(|nla| {
-        if let WgAllowedIpAttrs::IpAddr(addr) = nla {
+        if let WireguardAllowedIpAttr::IpAddr(addr) = nla {
             Some(*addr)
         } else {
             None
         }
     })?;
     let cidr = nlas.iter().find_map(|nla| {
-        if let WgAllowedIpAttrs::Cidr(cidr) = nla {
+        if let WireguardAllowedIpAttr::Cidr(cidr) = nla {
             Some(*cidr)
         } else {
             None
