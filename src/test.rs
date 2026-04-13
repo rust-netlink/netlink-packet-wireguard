@@ -192,7 +192,7 @@ fn test_amnezia_magic_headers() {
         .windows(6)
         .any(|w| w == &[0x06, 0x00, 0x0e, 0x00, 0x22, 0x11]));
 
-    // S1 (type 18 / 0x12, lenght 6): [06, 00, 0c, 00, 66, 55]
+    // S1 (type 12 / 0x0c, length 6): [06, 00, 0c, 00, 66, 55]
     assert!(buffer
         .windows(6)
         .any(|w| w == &[0x06, 0x00, 0x0c, 0x00, 0x66, 0x55]));

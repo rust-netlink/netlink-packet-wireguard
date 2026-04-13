@@ -155,7 +155,8 @@ where
     let mut attrs = Vec::new();
 
     for nla in NlasIterator::new(buf) {
-        let nla = nla.context("failed nla parse")?;
+        let nla =
+            nla.context("failed to parse wireguard netlink attributes")?;
         attrs.push(F::Attribute::parse(&nla)?);
     }
 
