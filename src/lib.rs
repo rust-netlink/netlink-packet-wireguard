@@ -18,6 +18,8 @@ pub use self::{
         WireguardAddressFamily, WireguardAllowedIp, WireguardAllowedIpAttr,
     },
     attribute::WireguardAttribute,
-    message::{WireguardCmd, WireguardMessage},
+    message::{
+        AmneziaWg, StandardWg, WgFamily, WireguardCmd, WireguardMessage,
+    },
     peer::{WireguardPeer, WireguardPeerAttribute, WireguardTimeSpec},
 };

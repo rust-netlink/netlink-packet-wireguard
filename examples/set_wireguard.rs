@@ -13,9 +13,9 @@ use netlink_packet_core::{
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    WireguardAddressFamily, WireguardAllowedIp, WireguardAllowedIpAttr,
-    WireguardAttribute, WireguardCmd, WireguardMessage, WireguardPeer,
-    WireguardPeerAttribute,
+    AmneziaWg, WireguardAddressFamily, WireguardAllowedIp,
+    WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
+    WireguardPeer, WireguardPeerAttribute,
 };
 
 #[tokio::main]
@@ -73,11 +73,12 @@ async fn main() {
         ])]),
     ];
 
-    let genlmsg: GenlMessage<WireguardMessage> =
-        GenlMessage::from_payload(WireguardMessage {
-            cmd: WireguardCmd::SetDevice,
-            attributes,
-        });
+    let msg: WireguardMessage<AmneziaWg> =
+        WireguardMessage::new(WireguardCmd::SetDevice, attributes);
+
+    let genlmsg: GenlMessage<WireguardMessage<AmneziaWg>> =
+        GenlMessage::from_payload(msg);
+
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_ACK;
 

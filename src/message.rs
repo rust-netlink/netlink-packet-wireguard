@@ -39,19 +39,49 @@ impl From<u8> for WireguardCmd {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct WireguardMessage {
-    pub cmd: WireguardCmd,
-    pub attributes: Vec<WireguardAttribute>,
+pub trait WgFamily: Default + Clone + std::fmt::Debug {
+    const NAME: &'static str;
+    const VERSION: u8;
 }
 
-impl GenlFamily for WireguardMessage {
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct StandardWg;
+impl WgFamily for StandardWg {
+    const NAME: &'static str = "wireguard";
+    const VERSION: u8 = 1;
+}
+
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+pub struct AmneziaWg;
+impl WgFamily for AmneziaWg {
+    const NAME: &'static str = "amneziawg";
+    const VERSION: u8 = 2;
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WireguardMessage<F: WgFamily = StandardWg> {
+    pub cmd: WireguardCmd,
+    pub attributes: Vec<WireguardAttribute>,
+    _phantom: std::marker::PhantomData<F>,
+}
+
+impl<F: WgFamily> WireguardMessage<F> {
+    pub fn new(cmd: WireguardCmd, attributes: Vec<WireguardAttribute>) -> Self {
+        Self {
+            cmd,
+            attributes,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<F: WgFamily> GenlFamily for WireguardMessage<F> {
     fn family_name() -> &'static str {
-        "wireguard"
+        F::NAME
     }
 
     fn version(&self) -> u8 {
-        1
+        F::VERSION
     }
 
     fn command(&self) -> u8 {
@@ -59,7 +89,7 @@ impl GenlFamily for WireguardMessage {
     }
 }
 
-impl Emitable for WireguardMessage {
+impl<F: WgFamily> Emitable for WireguardMessage<F> {
     fn emit(&self, buffer: &mut [u8]) {
         self.attributes.as_slice().emit(buffer)
     }
@@ -69,7 +99,9 @@ impl Emitable for WireguardMessage {
     }
 }
 
-impl ParseableParametrized<[u8], GenlHeader> for WireguardMessage {
+impl<F: WgFamily> ParseableParametrized<[u8], GenlHeader>
+    for WireguardMessage<F>
+{
     fn parse_with_param(
         buf: &[u8],
         header: GenlHeader,
@@ -77,6 +109,7 @@ impl ParseableParametrized<[u8], GenlHeader> for WireguardMessage {
         Ok(Self {
             cmd: header.cmd.into(),
             attributes: parse_attributes(buf)?,
+            _phantom: std::marker::PhantomData, // Обязательно добавляем это
         })
     }
 }

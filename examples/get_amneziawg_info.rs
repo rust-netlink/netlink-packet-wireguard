@@ -19,19 +19,22 @@ async fn main() {
 
     let argv: Vec<String> = args().collect();
     if argv.len() < 2 {
-        eprintln!("Usage: get_wireguard_info <ifname>");
+        eprintln!("Usage: get_amnezia_wg_info <ifname>");
         return;
     }
 
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
 
-    let msg = WireguardMessage::new(
+    use netlink_packet_wireguard::AmneziaWg;
+
+    let msg: WireguardMessage<AmneziaWg> = WireguardMessage::new(
         WireguardCmd::GetDevice,
         vec![WireguardAttribute::IfName(argv[1].clone())],
     );
 
-    let genlmsg: GenlMessage<WireguardMessage> = GenlMessage::from_payload(msg);
+    let genlmsg: GenlMessage<WireguardMessage<AmneziaWg>> =
+        GenlMessage::from_payload(msg);
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_DUMP;
 
@@ -51,7 +54,9 @@ async fn main() {
     }
 }
 
-fn print_wg_payload(wg: WireguardMessage) {
+fn print_wg_payload<F: netlink_packet_wireguard::WgFamily>(
+    wg: WireguardMessage<F>,
+) {
     for attr in &wg.attributes {
         match attr {
             WireguardAttribute::IfIndex(v) => println!("IfIndex: {}", v),
@@ -62,13 +67,24 @@ fn print_wg_payload(wg: WireguardMessage) {
             WireguardAttribute::PublicKey(v) => {
                 println!("PublicKey: {}", base64::encode(v))
             }
-            WireguardAttribute::ListenPort(v) => println!("ListenPort: {}", v),
+            WireguardAttribute::ListenPort(v) => {
+                println!("ListenPort: {}", v)
+            }
             WireguardAttribute::Fwmark(v) => println!("Fwmark: {}", v),
             WireguardAttribute::Peers(peers) => {
                 for peer in peers {
                     println!("Peer: ");
                     print_wg_peer(peer);
                 }
+            }
+            WireguardAttribute::JC(v) => {
+                println!("JunkCount: {}", v)
+            }
+            WireguardAttribute::Jmin(v) => {
+                println!("JunkPacketMinSize: {}", v)
+            }
+            WireguardAttribute::Jmax(v) => {
+                println!("JunkPacketMaxSize: {}", v)
             }
             _ => (),
         }
