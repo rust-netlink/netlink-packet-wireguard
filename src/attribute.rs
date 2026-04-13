@@ -50,8 +50,8 @@ const WGDEVICE_A_DT: u16 = 29;
 pub enum WireguardAttribute {
     IfIndex(u32),
     IfName(String),
-    PrivateKey([u8; 32]),
-    PublicKey([u8; 32]),
+    PrivateKey([u8; WG_KEY_LEN]),
+    PublicKey([u8; WG_KEY_LEN]),
     ListenPort(u16),
     Fwmark(u32),
     Peers(Vec<WireguardPeer>),
