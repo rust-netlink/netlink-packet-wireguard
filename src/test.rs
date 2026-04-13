@@ -10,9 +10,10 @@ use netlink_packet_generic::{GenlBuffer, GenlHeader};
 use pretty_assertions::assert_eq;
 
 use crate::{
-    AmneziaWg, StandardWg, WireguardAddressFamily, WireguardAllowedIp,
-    WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
-    WireguardPeer, WireguardPeerAttribute, WireguardTimeSpec,
+    AmneziaWg, AmneziaWgAttribute, Wireguard, WireguardAddressFamily,
+    WireguardAllowedIp, WireguardAllowedIpAttr, WireguardAttribute,
+    WireguardCmd, WireguardMessage, WireguardPeer, WireguardPeerAttribute,
+    WireguardTimeSpec,
 };
 
 // nlmon capture of netlink packet sent by `sudo wg` command with netlink
@@ -23,17 +24,16 @@ fn test_query_request() {
         0x00, 0x01, 0x00, 0x00, 0x07, 0x00, 0x02, 0x00, 0x63, 0x6e, 0x00, 0x00,
     ];
 
-    let expected: WireguardMessage<StandardWg> =
-        WireguardMessage::<StandardWg>::new(
-            WireguardCmd::GetDevice,
-            vec![WireguardAttribute::IfName("cn".to_string())],
-        );
+    let expected: WireguardMessage<Wireguard> = WireguardMessage {
+        cmd: WireguardCmd::GetDevice,
+        attributes: vec![WireguardAttribute::IfName("cn".to_string())],
+    };
 
     let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
 
     assert_eq!(
         expected,
-        WireguardMessage::<StandardWg>::parse_with_param(&raw[4..], header)
+        WireguardMessage::<Wireguard>::parse_with_param(&raw[4..], header)
             .unwrap(),
     );
     let mut buffer = vec![0; expected.buffer_len() + header.buffer_len()];
@@ -121,11 +121,10 @@ fn test_query_reply() {
         ])]),
     ];
 
-    let expected: WireguardMessage<StandardWg> =
-        WireguardMessage::<StandardWg>::new(
-            WireguardCmd::GetDevice,
-            attributes,
-        );
+    let expected: WireguardMessage<Wireguard> = WireguardMessage {
+        cmd: WireguardCmd::GetDevice,
+        attributes,
+    };
 
     let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
 
@@ -143,15 +142,15 @@ fn test_query_reply() {
 #[test]
 fn test_amnezia_junk_parameters() {
     // Message with Amnezia Specific Junk params
-    let msg: WireguardMessage<AmneziaWg> = WireguardMessage::new(
-        WireguardCmd::SetDevice,
-        vec![
-            WireguardAttribute::IfName("awg0".into()),
-            WireguardAttribute::JC(4),
-            WireguardAttribute::Jmin(40),
-            WireguardAttribute::Jmax(70),
+    let msg: WireguardMessage<AmneziaWg> = WireguardMessage {
+        cmd: WireguardCmd::SetDevice,
+        attributes: vec![
+            AmneziaWgAttribute::IfName("awg0".into()),
+            AmneziaWgAttribute::JC(4),
+            AmneziaWgAttribute::Jmin(40),
+            AmneziaWgAttribute::Jmax(70),
         ],
-    );
+    };
 
     let mut buffer = vec![0; msg.buffer_len()];
     msg.emit(&mut buffer);
@@ -177,13 +176,13 @@ fn test_amnezia_junk_parameters() {
 
 #[test]
 fn test_amnezia_magic_headers() {
-    let msg: WireguardMessage<AmneziaWg> = WireguardMessage::new(
-        WireguardCmd::SetDevice,
-        vec![
-            WireguardAttribute::H1(0x1122), // u16
-            WireguardAttribute::S1(0x5566), // u16
+    let msg: WireguardMessage<AmneziaWg> = WireguardMessage {
+        cmd: WireguardCmd::SetDevice,
+        attributes: vec![
+            AmneziaWgAttribute::H1(0x1122), // u16
+            AmneziaWgAttribute::S1(0x5566), // u16
         ],
-    );
+    };
 
     let mut buffer = vec![0; msg.buffer_len()];
     msg.emit(&mut buffer);
@@ -197,29 +196,4 @@ fn test_amnezia_magic_headers() {
     assert!(buffer
         .windows(6)
         .any(|w| w == &[0x06, 0x00, 0x0c, 0x00, 0x66, 0x55]));
-}
-
-#[test]
-fn test_standard_parses_amnezia_attributes() {
-    let raw: Vec<u8> = vec![
-        0x00, 0x01, 0x00, 0x00, 0x07, 0x00, 0x02, 0x00, 0x63, 0x6e, 0x00, 0x00,
-        0x06, 0x00, 0x0b, 0x00, 0x04, 0x00,
-    ];
-
-    let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
-
-    let parsed: WireguardMessage<StandardWg> =
-        WireguardMessage::parse_with_param(&raw[4..], header).unwrap();
-
-    assert_eq!(parsed.attributes.len(), 2);
-
-    assert!(parsed.attributes.iter().any(|a| matches!(
-        a,
-        WireguardAttribute::IfName(n) if n == "cn"
-    )));
-
-    assert!(parsed
-        .attributes
-        .iter()
-        .any(|a| matches!(a, WireguardAttribute::Jmax(4))));
 }

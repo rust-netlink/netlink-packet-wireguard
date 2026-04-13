@@ -9,8 +9,8 @@ use netlink_packet_core::{
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
-    WireguardPeerAttribute,
+    WireguardAllowedIp, WireguardAllowedIpAttr, WireguardAttribute,
+    WireguardCmd, WireguardMessage, WireguardPeerAttribute,
 };
 
 #[tokio::main]
@@ -26,12 +26,11 @@ async fn main() {
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
 
-    let msg = WireguardMessage::new(
-        WireguardCmd::GetDevice,
-        vec![WireguardAttribute::IfName(argv[1].clone())],
-    );
-
-    let genlmsg: GenlMessage<WireguardMessage> = GenlMessage::from_payload(msg);
+    let genlmsg: GenlMessage<WireguardMessage> =
+        GenlMessage::from_payload(WireguardMessage {
+            cmd: WireguardCmd::GetDevice,
+            attributes: vec![WireguardAttribute::IfName(argv[1].clone())],
+        });
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_DUMP;
 
@@ -67,7 +66,7 @@ fn print_wg_payload(wg: WireguardMessage) {
             WireguardAttribute::Peers(peers) => {
                 for peer in peers {
                     println!("Peer: ");
-                    print_wg_peer(peer);
+                    print_wg_peer(&peer);
                 }
             }
             _ => (),
@@ -97,7 +96,7 @@ fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
             WireguardPeerAttribute::TxBytes(v) => println!("  TxBytes: {}", v),
             WireguardPeerAttribute::AllowedIps(ips) => {
                 for ip in ips {
-                    print_wg_allowedip(ip);
+                    print_wg_allowedip(&ip);
                 }
             }
             _ => (),
@@ -105,7 +104,7 @@ fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
     }
 }
 
-fn print_wg_allowedip(nlas: &[WireguardAllowedIpAttr]) -> Option<()> {
+fn print_wg_allowedip(nlas: &WireguardAllowedIp) -> Option<()> {
     let ipaddr = nlas.iter().find_map(|nla| {
         if let WireguardAllowedIpAttr::IpAddr(addr) = nla {
             Some(*addr)

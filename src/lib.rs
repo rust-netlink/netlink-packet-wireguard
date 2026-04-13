@@ -17,9 +17,7 @@ pub use self::{
     allowedip::{
         WireguardAddressFamily, WireguardAllowedIp, WireguardAllowedIpAttr,
     },
-    attribute::WireguardAttribute,
-    message::{
-        AmneziaWg, StandardWg, WgFamily, WireguardCmd, WireguardMessage,
-    },
+    attribute::{AmneziaWgAttribute, WireguardAttribute},
+    message::{AmneziaWg, WgFamily, Wireguard, WireguardCmd, WireguardMessage},
     peer::{WireguardPeer, WireguardPeerAttribute, WireguardTimeSpec},
 };

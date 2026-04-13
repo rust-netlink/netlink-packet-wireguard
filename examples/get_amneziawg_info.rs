@@ -9,7 +9,8 @@ use netlink_packet_core::{
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
-    WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
+    AmneziaWg, AmneziaWgAttribute, WgFamily, WireguardAllowedIp,
+    WireguardAllowedIpAttr, WireguardCmd, WireguardMessage,
     WireguardPeerAttribute,
 };
 
@@ -19,19 +20,17 @@ async fn main() {
 
     let argv: Vec<String> = args().collect();
     if argv.len() < 2 {
-        eprintln!("Usage: get_amnezia_wg_info <ifname>");
+        eprintln!("Usage: get_amneziawg_info <ifname>");
         return;
     }
 
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
 
-    use netlink_packet_wireguard::AmneziaWg;
-
-    let msg: WireguardMessage<AmneziaWg> = WireguardMessage::new(
-        WireguardCmd::GetDevice,
-        vec![WireguardAttribute::IfName(argv[1].clone())],
-    );
+    let msg: WireguardMessage<AmneziaWg> = WireguardMessage {
+        cmd: WireguardCmd::GetDevice,
+        attributes: vec![AmneziaWgAttribute::IfName(argv[1].clone())],
+    };
 
     let genlmsg: GenlMessage<WireguardMessage<AmneziaWg>> =
         GenlMessage::from_payload(msg);
@@ -54,36 +53,36 @@ async fn main() {
     }
 }
 
-fn print_wg_payload<F: netlink_packet_wireguard::WgFamily>(
+fn print_wg_payload<F: WgFamily<Attribute = AmneziaWgAttribute>>(
     wg: WireguardMessage<F>,
 ) {
     for attr in &wg.attributes {
         match attr {
-            WireguardAttribute::IfIndex(v) => println!("IfIndex: {}", v),
-            WireguardAttribute::IfName(v) => println!("IfName: {}", v),
-            WireguardAttribute::PrivateKey(_) => {
+            AmneziaWgAttribute::IfIndex(v) => println!("IfIndex: {}", v),
+            AmneziaWgAttribute::IfName(v) => println!("IfName: {}", v),
+            AmneziaWgAttribute::PrivateKey(_) => {
                 println!("PrivateKey: (hidden)")
             }
-            WireguardAttribute::PublicKey(v) => {
+            AmneziaWgAttribute::PublicKey(v) => {
                 println!("PublicKey: {}", base64::encode(v))
             }
-            WireguardAttribute::ListenPort(v) => {
+            AmneziaWgAttribute::ListenPort(v) => {
                 println!("ListenPort: {}", v)
             }
-            WireguardAttribute::Fwmark(v) => println!("Fwmark: {}", v),
-            WireguardAttribute::Peers(peers) => {
+            AmneziaWgAttribute::Fwmark(v) => println!("Fwmark: {}", v),
+            AmneziaWgAttribute::Peers(peers) => {
                 for peer in peers {
                     println!("Peer: ");
-                    print_wg_peer(peer);
+                    print_wg_peer(&peer);
                 }
             }
-            WireguardAttribute::JC(v) => {
+            AmneziaWgAttribute::JC(v) => {
                 println!("JunkCount: {}", v)
             }
-            WireguardAttribute::Jmin(v) => {
+            AmneziaWgAttribute::Jmin(v) => {
                 println!("JunkPacketMinSize: {}", v)
             }
-            WireguardAttribute::Jmax(v) => {
+            AmneziaWgAttribute::Jmax(v) => {
                 println!("JunkPacketMaxSize: {}", v)
             }
             _ => (),
@@ -113,7 +112,7 @@ fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
             WireguardPeerAttribute::TxBytes(v) => println!("  TxBytes: {}", v),
             WireguardPeerAttribute::AllowedIps(ips) => {
                 for ip in ips {
-                    print_wg_allowedip(ip);
+                    print_wg_allowedip(&ip);
                 }
             }
             _ => (),
@@ -121,7 +120,7 @@ fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
     }
 }
 
-fn print_wg_allowedip(nlas: &[WireguardAllowedIpAttr]) -> Option<()> {
+fn print_wg_allowedip(nlas: &WireguardAllowedIp) -> Option<()> {
     let ipaddr = nlas.iter().find_map(|nla| {
         if let WireguardAllowedIpAttr::IpAddr(addr) = nla {
             Some(*addr)
