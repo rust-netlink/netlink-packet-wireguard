@@ -1,4 +1,14 @@
 # Changelog
+## [0.3.1] - 2026-05-08
+### Breaking changes
+ - N/A
+
+### New features
+ - N/A
+
+### Bug fixes
+ - Add license file. (d37a398)
+
 ## [0.3.0] - 2026-01-26
 ### Breaking changes
  - Rewrite to align with netlink-packet-route code style. (3067a39)
