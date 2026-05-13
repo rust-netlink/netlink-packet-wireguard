@@ -2,6 +2,7 @@
 
 use std::{convert::TryInto, net::SocketAddr};
 
+use bitflags::bitflags;
 use netlink_packet_core::{
     emit_i64, emit_u16, emit_u32, emit_u64, parse_i64, parse_u16, parse_u32,
     parse_u64, DecodeError, DefaultNla, Emitable, ErrorContext, Nla, NlaBuffer,
@@ -135,6 +136,21 @@ const WGPEER_A_TX_BYTES: u16 = 8;
 const WGPEER_A_ALLOWEDIPS: u16 = 9;
 const WGPEER_A_PROTOCOL_VERSION: u16 = 10;
 
+const WGPEER_F_REMOVE_ME: u32 = 1;
+const WGPEER_F_REPLACE_ALLOWEDIPS: u32 = 2;
+const WGPEER_F_UPDATE_ONLY: u32 = 4;
+
+bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub struct WireguardPeerFlags: u32 {
+        const RemoveMe = WGPEER_F_REMOVE_ME;
+        const ReplaceAllowedIps = WGPEER_F_REPLACE_ALLOWEDIPS;
+        const UpdateOnly = WGPEER_F_UPDATE_ONLY;
+        const _ = !0;
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WireguardPeerAttribute {
@@ -147,7 +163,7 @@ pub enum WireguardPeerAttribute {
     TxBytes(u64),
     AllowedIps(Vec<WireguardAllowedIp>),
     ProtocolVersion(u32),
-    Flags(u32),
+    Flags(WireguardPeerFlags),
     Other(DefaultNla),
 }
 
@@ -166,7 +182,7 @@ impl Nla for WireguardPeerAttribute {
             Self::TxBytes(v) => size_of_val(v),
             Self::AllowedIps(v) => v.as_slice().buffer_len(),
             Self::ProtocolVersion(v) => size_of_val(v),
-            Self::Flags(v) => size_of_val(v),
+            Self::Flags(_) => 4,
             Self::Other(v) => v.value_len(),
         }
     }
@@ -200,7 +216,7 @@ impl Nla for WireguardPeerAttribute {
             Self::TxBytes(v) => emit_u64(buffer, *v).unwrap(),
             Self::AllowedIps(v) => v.as_slice().emit(buffer),
             Self::ProtocolVersion(v) => emit_u32(buffer, *v).unwrap(),
-            Self::Flags(v) => emit_u32(buffer, *v).unwrap(),
+            Self::Flags(v) => emit_u32(buffer, v.bits()).unwrap(),
             Self::Other(v) => v.emit_value(buffer),
         }
     }
@@ -256,9 +272,12 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                 parse_u32(payload)
                     .context("invalid WGPEER_A_PROTOCOL_VERSION value")?,
             ),
-            WGPEER_A_FLAGS => Self::Flags(
-                parse_u32(payload).context("invalid WGPEER_A_FLAGS value")?,
-            ),
+            WGPEER_A_FLAGS => {
+                Self::Flags(WireguardPeerFlags::from_bits_retain(
+                    parse_u32(payload)
+                        .context("invalid WGPEER_A_FLAGS value")?,
+                ))
+            }
             kind => Self::Other(
                 DefaultNla::parse(buf)
                     .context(format!("unknown NLA type {kind}"))?,

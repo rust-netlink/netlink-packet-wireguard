@@ -2,6 +2,7 @@
 
 use std::convert::TryInto;
 
+use bitflags::bitflags;
 use netlink_packet_core::{
     emit_u16, emit_u32, parse_string, parse_u16, parse_u32, DecodeError,
     DefaultNla, Emitable, ErrorContext, Nla, NlaBuffer, Parseable,
@@ -22,6 +23,17 @@ const WGDEVICE_A_LISTEN_PORT: u16 = 6;
 const WGDEVICE_A_FWMARK: u16 = 7;
 const WGDEVICE_A_PEERS: u16 = 8;
 
+const WGDEVICE_F_REPLACE_PEERS: u32 = 1;
+
+bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    #[non_exhaustive]
+    pub struct WireguardDeviceFlags: u32 {
+        const ReplacePeers = WGDEVICE_F_REPLACE_PEERS;
+        const _ = !0;
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WireguardAttribute {
@@ -32,7 +44,7 @@ pub enum WireguardAttribute {
     ListenPort(u16),
     Fwmark(u32),
     Peers(Vec<WireguardPeer>),
-    Flags(u32),
+    Flags(WireguardDeviceFlags),
     Other(DefaultNla),
 }
 
@@ -78,7 +90,7 @@ impl Nla for WireguardAttribute {
             Self::ListenPort(v) => emit_u16(buffer, *v).unwrap(),
             Self::Fwmark(v) => emit_u32(buffer, *v).unwrap(),
             Self::Peers(v) => v.as_slice().emit(buffer),
-            Self::Flags(v) => emit_u32(buffer, *v).unwrap(),
+            Self::Flags(v) => emit_u32(buffer, v.bits()).unwrap(),
             Self::Other(attr) => attr.emit_value(buffer),
         }
     }
@@ -123,9 +135,12 @@ impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
                     .context("invalid WGDEVICE_A_FWMARK value")?,
             ),
             WGDEVICE_A_PEERS => Self::Peers(WireguardPeers::parse(buf)?.0),
-            WGDEVICE_A_FLAGS => Self::Flags(
-                parse_u32(payload).context("invalid WGDEVICE_A_FLAGS value")?,
-            ),
+            WGDEVICE_A_FLAGS => {
+                Self::Flags(WireguardDeviceFlags::from_bits_retain(
+                    parse_u32(payload)
+                        .context("invalid WGDEVICE_A_FLAGS value")?,
+                ))
+            }
             kind => Self::Other(
                 DefaultNla::parse(buf)
                     .context(format!("unknown NLA type {kind}"))?,
