@@ -16,8 +16,12 @@ mod test;
 pub use self::{
     allowedip::{
         WireguardAddressFamily, WireguardAllowedIp, WireguardAllowedIpAttr,
+        WireguardAllowedIpFlags,
     },
-    attribute::WireguardAttribute,
+    attribute::{WireguardAttribute, WireguardDeviceFlags},
     message::{WireguardCmd, WireguardMessage},
-    peer::{WireguardPeer, WireguardPeerAttribute, WireguardTimeSpec},
+    peer::{
+        WireguardPeer, WireguardPeerAttribute, WireguardPeerFlags,
+        WireguardTimeSpec,
+    },
 };
