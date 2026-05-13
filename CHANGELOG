@@ -1,4 +1,16 @@
 # Changelog
+## [0.4.0] - 2026-05-13
+### Breaking changes
+ - Changed `WireguardAttribute::Flags` from u32 to enum. (f860bde)
+ - Changed `WireguardAllowedIpAttr::Flags` from u32 to enum. (f860bde)
+ - Changed `WireguardPeerAttribute::Flags` from u32 to enum. (f860bde)
+
+### New features
+ - N/A
+
+### Bug fixes
+ - N/A
+
 ## [0.3.1] - 2026-05-08
 ### Breaking changes
  - N/A
