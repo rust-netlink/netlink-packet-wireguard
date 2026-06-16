@@ -93,7 +93,7 @@ async fn main() {
 
 fn generate_priv_key() -> [u8; WireguardAttribute::WG_KEY_LEN] {
     let mut key = [0u8; WireguardAttribute::WG_KEY_LEN];
-    getrandom::getrandom(&mut key).unwrap();
+    getrandom::fill(&mut key).unwrap();
     // modify random bytes using algorithm described
     // at https://cr.yp.to/ecdh.html.
     key[0] &= 248;
