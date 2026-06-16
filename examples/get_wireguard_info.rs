@@ -2,6 +2,7 @@
 
 use std::env::args;
 
+use base64::Engine;
 use futures::StreamExt;
 use genetlink::new_connection;
 use netlink_packet_core::{
@@ -59,7 +60,10 @@ fn print_wg_payload(wg: WireguardMessage) {
                 println!("PrivateKey: (hidden)")
             }
             WireguardAttribute::PublicKey(v) => {
-                println!("PublicKey: {}", base64::encode(v))
+                println!(
+                    "PublicKey: {}",
+                    base64::engine::general_purpose::STANDARD.encode(v)
+                )
             }
             WireguardAttribute::ListenPort(v) => println!("ListenPort: {}", v),
             WireguardAttribute::Fwmark(v) => println!("Fwmark: {}", v),
@@ -78,7 +82,10 @@ fn print_wg_peer(attrs: &[WireguardPeerAttribute]) {
     for attr in attrs {
         match attr {
             WireguardPeerAttribute::PublicKey(v) => {
-                println!("  PublicKey: {}", base64::encode(v))
+                println!(
+                    "  PublicKey: {}",
+                    base64::engine::general_purpose::STANDARD.encode(v)
+                )
             }
             WireguardPeerAttribute::PresharedKey(_) => {
                 println!("  PresharedKey: (hidden)")
