@@ -25,4 +25,4 @@ getrandom = "0.2.10"
 netlink-proto = { version = "0.12" }
 genetlink = { version = "0.2.6" }
 tokio = { version = "1.9.0", features = ["macros", "rt-multi-thread"] }
-pretty_assertions = "0.7.2"
+pretty_assertions = "1.4.1"
