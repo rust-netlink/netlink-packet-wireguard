@@ -6,7 +6,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
 };
 
-use base64::Engine;
+use base64::prelude::{Engine as _, BASE64_STANDARD};
 use futures::StreamExt;
 use genetlink::new_connection;
 use netlink_packet_core::{
@@ -33,12 +33,11 @@ async fn main() {
     // This can be done with `ip link <name> type wireguard` command.
     let name = argv[1].clone();
     let priv_key = generate_priv_key();
-    let peer_pub_key: [u8; WireguardAttribute::WG_KEY_LEN] =
-        base64::engine::general_purpose::STANDARD
-            .decode("8bdQrVLqiw3ZoHCucNh1YfH0iCWuyStniRr8t7H24Fk=")
-            .unwrap()
-            .try_into()
-            .unwrap();
+    let peer_pub_key: [u8; WireguardAttribute::WG_KEY_LEN] = BASE64_STANDARD
+        .decode("8bdQrVLqiw3ZoHCucNh1YfH0iCWuyStniRr8t7H24Fk=")
+        .unwrap()
+        .try_into()
+        .unwrap();
 
     let (connection, mut handle, _) = new_connection().unwrap();
     tokio::spawn(connection);
