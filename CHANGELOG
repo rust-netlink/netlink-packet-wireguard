@@ -1,4 +1,18 @@
 # Changelog
+## [0.4.1] - 2026-07-25
+### Breaking changes
+ - N/A
+
+### New features
+ - N/A
+
+### Bug fixes
+ - Update base64 dev-dependency from v0.13 to v0.22. (738a579)
+ - Update getrandom dev-dependency from v0.2 to v0.4. (38361c9)
+ - Update env_logger dev-dependency from v0.10 to v0.11. (6188435)
+ - Update pretty_assertions dev-dependency from v0.7 to v1. (6c6e7f8)
+ - Remove leftover unused code. (3546e00)
+
 ## [0.4.0] - 2026-05-13
 ### Breaking changes
  - Changed `WireguardAttribute::Flags` from u32 to enum. (f860bde)
