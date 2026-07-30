@@ -6,7 +6,7 @@ edition = "2021"
 homepage = "https://github.com/rust-netlink/netlink-packet-wireguard"
 repository = "https://github.com/rust-netlink/netlink-packet-wireguard"
 keywords = ["wireguard", "netlink", "linux"]
-license = "MIT"
+license = "MITNFA"
 readme = "README.md"
 description = "Wireguard generic netlink packet definitions"
 
