@@ -76,6 +76,8 @@ pub(crate) fn parse_socket_addr(buf: &[u8]) -> Result<SocketAddr, DecodeError> {
     }
 }
 
+// test data are using hard coded little endian byte order, not for big-endian
+#[cfg(not(target_endian = "big"))]
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
