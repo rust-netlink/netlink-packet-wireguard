@@ -10,6 +10,8 @@ mod message;
 mod peer;
 mod socket_addr;
 
+// test data are using hard coded little endian byte order, not for big-endian
+#[cfg(not(target_endian = "big"))]
 #[cfg(test)]
 mod test;
 
