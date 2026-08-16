@@ -5,8 +5,8 @@ use std::{
     str::FromStr,
 };
 
-use netlink_packet_core::{Emitable, Parseable, ParseableParametrized};
-use netlink_packet_generic::{GenlBuffer, GenlHeader};
+use netlink_packet_core::{Emitable, ParseableParametrized};
+use netlink_packet_generic::GenlHeader;
 use pretty_assertions::assert_eq;
 
 use crate::{
@@ -29,7 +29,7 @@ fn test_query_request() {
         attributes: vec![WireguardAttribute::IfName("cn".to_string())],
     };
 
-    let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
+    let header = GenlHeader::parse(&raw[..]).unwrap();
 
     assert_eq!(
         expected,
@@ -128,7 +128,7 @@ fn test_query_reply() {
         ],
     };
 
-    let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
+    let header = GenlHeader::parse(&raw[..]).unwrap();
 
     assert_eq!(
         expected,
@@ -210,7 +210,7 @@ fn test_setconf_against_exiting_wg() {
         ],
     };
 
-    let header = GenlHeader::parse(&GenlBuffer::new(&raw)).unwrap();
+    let header = GenlHeader::parse(&raw[..]).unwrap();
 
     assert_eq!(
         expected,
