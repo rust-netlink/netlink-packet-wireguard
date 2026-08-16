@@ -1,4 +1,14 @@
 # Changelog
+## [0.4.3] - 2026-08-16
+### Breaking changes
+ - N/A
+
+### New features
+ - N/A
+
+### Bug fixes
+ - Disable tests on big-endian targets. (1b80c3e)
+
 ## [0.4.2] - 2026-07-31
 ### Breaking changes
  - N/A
