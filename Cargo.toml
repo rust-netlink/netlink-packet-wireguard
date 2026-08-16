@@ -13,8 +13,8 @@ description = "Wireguard generic netlink packet definitions"
 [dependencies]
 libc = "0.2.98"
 log = "0.4.14"
-netlink-packet-generic = { version = "0.4.0" }
-netlink-packet-core = { version = "0.8.0" }
+netlink-packet-generic = { version = "0.5" }
+netlink-packet-core = { version = "0.9" }
 bitflags = "2"
 
 [dev-dependencies]
@@ -22,7 +22,7 @@ base64 = "0.22.1"
 env_logger = "0.11.10"
 futures = "0.3.16"
 getrandom = "0.4.2"
-netlink-proto = { version = "0.12" }
-genetlink = { version = "0.2.6" }
+netlink-proto = { version = "0.13" }
+genetlink = { version = "0.3" }
 tokio = { version = "1.9.0", features = ["macros", "rt-multi-thread"] }
 pretty_assertions = "1.4.1"
