@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 
+mod common;
+
 use std::{
     convert::TryInto,
     env::args,
@@ -7,10 +9,8 @@ use std::{
 };
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use futures::StreamExt;
-use genetlink::new_connection;
 use netlink_packet_core::{
-    NetlinkMessage, NetlinkPayload, NLM_F_ACK, NLM_F_REQUEST,
+    Emitable, NetlinkMessage, NetlinkPayload, NLM_F_ACK, NLM_F_REQUEST,
 };
 use netlink_packet_generic::GenlMessage;
 use netlink_packet_wireguard::{
@@ -18,11 +18,11 @@ use netlink_packet_wireguard::{
     WireguardAttribute, WireguardCmd, WireguardMessage, WireguardPeer,
     WireguardPeerAttribute,
 };
+use netlink_sys::{
+    protocols::NETLINK_GENERIC, Socket, SocketAddr as NlSocketAddr,
+};
 
-#[tokio::main]
-async fn main() {
-    env_logger::init();
-
+fn main() {
     let argv: Vec<String> = args().collect();
     if argv.len() < 2 {
         eprintln!("Usage: set_wireguard <ifname>");
@@ -39,8 +39,11 @@ async fn main() {
         .try_into()
         .unwrap();
 
-    let (connection, mut handle, _) = new_connection().unwrap();
-    tokio::spawn(connection);
+    let mut socket = Socket::new(NETLINK_GENERIC).unwrap();
+    socket.bind_auto().unwrap();
+    socket.connect(&NlSocketAddr::new(0, 0)).unwrap();
+
+    let family_id = common::resolve_family_id(&mut socket, "wireguard");
 
     let attributes = vec![
         WireguardAttribute::IfName(name),
@@ -74,21 +77,26 @@ async fn main() {
         ])]),
     ];
 
-    let genlmsg: GenlMessage<WireguardMessage> =
+    let mut genlmsg: GenlMessage<WireguardMessage> =
         GenlMessage::from_payload(WireguardMessage {
             cmd: WireguardCmd::SetDevice,
             attributes,
         });
+    genlmsg.set_resolved_family_id(family_id);
     let mut nlmsg = NetlinkMessage::from(genlmsg);
     nlmsg.header.flags = NLM_F_REQUEST | NLM_F_ACK;
 
-    let mut res = handle.request(nlmsg).await.unwrap();
+    let mut txbuf = Vec::new();
+    nlmsg.emit(&mut txbuf).unwrap();
+    socket.send(&txbuf, 0).unwrap();
 
-    if let Some(result) = res.next().await {
-        let rx_packet = result.unwrap();
-        if let NetlinkPayload::Error(e) = rx_packet.payload {
-            eprintln!("Error: {:?}", e.to_io());
-        }
+    let mut rxbuf = Vec::with_capacity(8192);
+    socket.recv(&mut rxbuf, 0).unwrap();
+    let rx_packet =
+        <NetlinkMessage<GenlMessage<WireguardMessage>>>::deserialize(&rxbuf)
+            .unwrap();
+    if let NetlinkPayload::Error(err) = rx_packet.payload {
+        eprintln!("Error: {:?}", err.to_io());
     }
 }
 

@@ -13,16 +13,12 @@ description = "Wireguard generic netlink packet definitions"
 [dependencies]
 libc = "0.2.98"
 log = "0.4.14"
-netlink-packet-generic = { version = "0.5" }
-netlink-packet-core = { version = "0.9" }
+netlink-packet-generic = { git = "https://github.com/rust-netlink/netlink-packet-generic", branch = "main" }
+netlink-packet-core = "1.0.0-rc1"
 bitflags = "2"
 
 [dev-dependencies]
 base64 = "0.22.1"
-env_logger = "0.11.10"
-futures = "0.3.16"
 getrandom = "0.4.2"
-netlink-proto = { version = "0.14.1" }
-genetlink = { version = "0.3" }
-tokio = { version = "1.9.0", features = ["macros", "rt-multi-thread"] }
+netlink-sys = { version = "0.9" }
 pretty_assertions = "1.4.1"

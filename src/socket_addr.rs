@@ -6,7 +6,8 @@ use std::{
 };
 
 use netlink_packet_core::{
-    emit_u16, emit_u16_be, emit_u32, parse_u16_be, parse_u32, DecodeError,
+    append_bytes, append_u16, append_u16_be, append_u32, parse_u16_be,
+    parse_u32, DecodeError,
 };
 
 pub(crate) const SOCKET_ADDR_V4_LEN: usize = 16;
@@ -41,26 +42,26 @@ fn parse_socket_addr_v4(payload: &[u8]) -> SocketAddrV4 {
     SocketAddrV4::new(ip, port)
 }
 
-fn emit_socket_addr_v4(addr: &SocketAddrV4, buf: &mut [u8]) {
-    emit_u16(&mut buf[..2], AF_INET).unwrap();
-    emit_u16_be(&mut buf[2..4], addr.port()).unwrap();
-    buf[4..8].copy_from_slice(addr.ip().octets().as_slice());
+fn emit_socket_addr_v4(addr: &SocketAddrV4, out: &mut Vec<u8>) {
+    append_u16(out, AF_INET);
+    append_u16_be(out, addr.port());
+    append_bytes(out, addr.ip().octets().as_slice());
     // padding
-    buf[8..16].copy_from_slice([0; 8].as_slice());
+    append_bytes(out, [0; 8].as_slice());
 }
 
-fn emit_socket_addr_v6(addr: &SocketAddrV6, buf: &mut [u8]) {
-    emit_u16(&mut buf[..2], AF_INET6).unwrap();
-    emit_u16_be(&mut buf[2..4], addr.port()).unwrap();
-    emit_u32(&mut buf[4..8], addr.flowinfo()).unwrap();
-    buf[8..24].copy_from_slice(addr.ip().octets().as_slice());
-    emit_u32(&mut buf[24..28], addr.scope_id()).unwrap();
+fn emit_socket_addr_v6(addr: &SocketAddrV6, out: &mut Vec<u8>) {
+    append_u16(out, AF_INET6);
+    append_u16_be(out, addr.port());
+    append_u32(out, addr.flowinfo());
+    append_bytes(out, addr.ip().octets().as_slice());
+    append_u32(out, addr.scope_id());
 }
 
-pub(crate) fn emit_socket_addr(addr: &SocketAddr, buf: &mut [u8]) {
+pub(crate) fn emit_socket_addr(addr: &SocketAddr, out: &mut Vec<u8>) {
     match addr {
-        SocketAddr::V4(v4) => emit_socket_addr_v4(v4, buf),
-        SocketAddr::V6(v6) => emit_socket_addr_v6(v6, buf),
+        SocketAddr::V4(v4) => emit_socket_addr_v4(v4, out),
+        SocketAddr::V6(v6) => emit_socket_addr_v6(v6, out),
     }
 }
 
