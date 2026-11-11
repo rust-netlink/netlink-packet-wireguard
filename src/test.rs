@@ -36,9 +36,9 @@ fn test_query_request() {
         WireguardMessage::parse_with_param(&raw[4..], header).unwrap(),
     );
 
-    let mut buffer = vec![0; expected.buffer_len() + header.buffer_len()];
-    header.emit(&mut buffer);
-    expected.emit(&mut buffer[4..]);
+    let mut buffer = Vec::new();
+    header.emit(&mut buffer).unwrap();
+    expected.emit(&mut buffer).unwrap();
     assert_eq!(&buffer, &raw);
 }
 
@@ -135,9 +135,9 @@ fn test_query_reply() {
         WireguardMessage::parse_with_param(&raw[4..], header).unwrap(),
     );
 
-    let mut buffer = vec![0; expected.buffer_len() + header.buffer_len()];
-    header.emit(&mut buffer);
-    expected.emit(&mut buffer[4..]);
+    let mut buffer = Vec::new();
+    header.emit(&mut buffer).unwrap();
+    expected.emit(&mut buffer).unwrap();
     assert_eq!(&buffer, &raw);
 }
 
@@ -217,8 +217,8 @@ fn test_setconf_against_exiting_wg() {
         WireguardMessage::parse_with_param(&raw[4..], header).unwrap(),
     );
 
-    let mut buffer = vec![0; expected.buffer_len() + header.buffer_len()];
-    header.emit(&mut buffer);
-    expected.emit(&mut buffer[4..]);
+    let mut buffer = Vec::new();
+    header.emit(&mut buffer).unwrap();
+    expected.emit(&mut buffer).unwrap();
     assert_eq!(&buffer, &raw);
 }

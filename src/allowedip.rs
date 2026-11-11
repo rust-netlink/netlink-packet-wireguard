@@ -4,11 +4,10 @@ use std::net::IpAddr;
 
 use bitflags::bitflags;
 use netlink_packet_core::{
-    emit_u16, emit_u32, parse_ip, parse_u16, parse_u32, DecodeError,
-    DefaultNla, Emitable, ErrorContext, Nla, NlaBuffer, NlasIterator,
-    Parseable, NLA_F_NESTED,
+    append_bytes, append_u16, append_u32, parse_ip, parse_u16, parse_u32,
+    DecodeError, DefaultNla, Emitable, EncodeError, ErrorContext, Nla,
+    NlaBuffer, NlasIterator, Parseable, NLA_F_NESTED,
 };
-
 const WGALLOWEDIP_A_FAMILY: u16 = 1;
 const WGALLOWEDIP_A_IPADDR: u16 = 2;
 const WGALLOWEDIP_A_CIDR_MASK: u16 = 3;
@@ -16,14 +15,10 @@ const WGALLOWEDIP_A_FLAGS: u16 = 4;
 
 pub(crate) struct WireguardAllowedIps(pub(crate) Vec<WireguardAllowedIp>);
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
-    for WireguardAllowedIps
-{
-    fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
+impl<'a> Parseable<NlaBuffer<'a>> for WireguardAllowedIps {
+    fn parse(buf: &NlaBuffer<'a>) -> Result<Self, DecodeError> {
         let mut ret = Vec::new();
-        let nlas = NlasIterator::new(buf.value());
-        for nla in nlas {
-            let nla = nla?;
+        for nla in NlasIterator::new(buf.value())? {
             ret.push(WireguardAllowedIp::parse(&nla)?);
         }
         Ok(Self(ret))
@@ -41,14 +36,10 @@ impl std::ops::Deref for WireguardAllowedIps {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WireguardAllowedIp(pub Vec<WireguardAllowedIpAttr>);
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
-    for WireguardAllowedIp
-{
-    fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
+impl<'a> Parseable<NlaBuffer<'a>> for WireguardAllowedIp {
+    fn parse(buf: &NlaBuffer<'a>) -> Result<Self, DecodeError> {
         let mut ret = Vec::new();
-        let nlas = NlasIterator::new(buf.value());
-        for nla in nlas {
-            let nla = nla?;
+        for nla in NlasIterator::new(buf.value())? {
             ret.push(WireguardAllowedIpAttr::parse(&nla)?);
         }
         Ok(Self(ret))
@@ -61,12 +52,8 @@ impl Nla for WireguardAllowedIp {
         NLA_F_NESTED
     }
 
-    fn value_len(&self) -> usize {
-        self.0.as_slice().buffer_len()
-    }
-
-    fn emit_value(&self, buffer: &mut [u8]) {
-        self.0.as_slice().emit(buffer)
+    fn emit_value(&self, out: &mut Vec<u8>) -> Result<(), EncodeError> {
+        self.0.as_slice().emit(out)
     }
 }
 
@@ -133,19 +120,6 @@ pub enum WireguardAllowedIpAttr {
 }
 
 impl Nla for WireguardAllowedIpAttr {
-    fn value_len(&self) -> usize {
-        match self {
-            Self::Family(_) => 2,
-            Self::IpAddr(v) => match *v {
-                IpAddr::V4(_) => 4,
-                IpAddr::V6(_) => 16,
-            },
-            Self::Cidr(_) => 1,
-            Self::Flags(_) => 4,
-            Self::Other(nla) => nla.value_len(),
-        }
-    }
-
     fn kind(&self) -> u16 {
         match self {
             Self::Family(_) => WGALLOWEDIP_A_FAMILY,
@@ -156,24 +130,23 @@ impl Nla for WireguardAllowedIpAttr {
         }
     }
 
-    fn emit_value(&self, buffer: &mut [u8]) {
+    fn emit_value(&self, out: &mut Vec<u8>) -> Result<(), EncodeError> {
         match self {
-            Self::Family(v) => emit_u16(buffer, u16::from(*v)).unwrap(),
+            Self::Family(v) => append_u16(out, u16::from(*v)),
             Self::IpAddr(ip) => match ip {
-                IpAddr::V4(ip) => buffer.copy_from_slice(&ip.octets()),
-                IpAddr::V6(ip) => buffer.copy_from_slice(&ip.octets()),
+                IpAddr::V4(ip) => append_bytes(out, &ip.octets()),
+                IpAddr::V6(ip) => append_bytes(out, &ip.octets()),
             },
-            Self::Cidr(v) => buffer[0] = *v,
-            Self::Flags(v) => emit_u32(buffer, v.bits()).unwrap(),
-            Self::Other(nla) => nla.emit_value(buffer),
+            Self::Cidr(v) => out.push(*v),
+            Self::Flags(v) => append_u32(out, v.bits()),
+            Self::Other(nla) => return nla.emit_value(out),
         }
+        Ok(())
     }
 }
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
-    for WireguardAllowedIpAttr
-{
-    fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
+impl<'a> Parseable<NlaBuffer<'a>> for WireguardAllowedIpAttr {
+    fn parse(buf: &NlaBuffer<'a>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
             WGALLOWEDIP_A_FAMILY => Self::Family(

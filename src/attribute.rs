@@ -4,14 +4,13 @@ use std::convert::TryInto;
 
 use bitflags::bitflags;
 use netlink_packet_core::{
-    emit_u16, emit_u32, parse_string, parse_u16, parse_u32, DecodeError,
-    DefaultNla, Emitable, ErrorContext, Nla, NlaBuffer, Parseable,
-    NLA_F_NESTED,
+    append_bytes, append_u16, append_u32, parse_string, parse_u16, parse_u32,
+    DecodeError, DefaultNla, Emitable, EncodeError, ErrorContext, Nla,
+    NlaBuffer, Parseable, NLA_F_NESTED,
 };
 
 use super::peer::WireguardPeers;
 use crate::WireguardPeer;
-
 const WG_KEY_LEN: usize = 32;
 
 const WGDEVICE_A_IFINDEX: u16 = 1;
@@ -53,17 +52,6 @@ impl WireguardAttribute {
 }
 
 impl Nla for WireguardAttribute {
-    fn value_len(&self) -> usize {
-        match self {
-            Self::IfName(v) => v.len() + 1,
-            Self::PrivateKey(_) | Self::PublicKey(_) => WG_KEY_LEN,
-            Self::ListenPort(_) => 2,
-            Self::Peers(v) => v.as_slice().buffer_len(),
-            Self::Fwmark(_) | Self::IfIndex(_) | Self::Flags(_) => 4,
-            Self::Other(v) => v.value_len(),
-        }
-    }
-
     fn kind(&self) -> u16 {
         match self {
             Self::IfIndex(_) => WGDEVICE_A_IFINDEX,
@@ -78,28 +66,27 @@ impl Nla for WireguardAttribute {
         }
     }
 
-    fn emit_value(&self, buffer: &mut [u8]) {
+    fn emit_value(&self, out: &mut Vec<u8>) -> Result<(), EncodeError> {
         match self {
-            Self::IfIndex(v) => emit_u32(buffer, *v).unwrap(),
+            Self::IfIndex(v) => append_u32(out, *v),
             Self::IfName(s) => {
-                buffer[..s.len()].copy_from_slice(s.as_bytes());
-                buffer[s.len()] = 0;
+                append_bytes(out, s.as_bytes());
+                out.push(0);
             }
-            Self::PrivateKey(v) => buffer.copy_from_slice(v),
-            Self::PublicKey(v) => buffer.copy_from_slice(v),
-            Self::ListenPort(v) => emit_u16(buffer, *v).unwrap(),
-            Self::Fwmark(v) => emit_u32(buffer, *v).unwrap(),
-            Self::Peers(v) => v.as_slice().emit(buffer),
-            Self::Flags(v) => emit_u32(buffer, v.bits()).unwrap(),
-            Self::Other(attr) => attr.emit_value(buffer),
+            Self::PrivateKey(v) => append_bytes(out, v),
+            Self::PublicKey(v) => append_bytes(out, v),
+            Self::ListenPort(v) => append_u16(out, *v),
+            Self::Fwmark(v) => append_u32(out, *v),
+            Self::Peers(v) => v.as_slice().emit(out)?,
+            Self::Flags(v) => append_u32(out, v.bits()),
+            Self::Other(attr) => return attr.emit_value(out),
         }
+        Ok(())
     }
 }
 
-impl<'a, T: AsRef<[u8]> + ?Sized> Parseable<NlaBuffer<&'a T>>
-    for WireguardAttribute
-{
-    fn parse(buf: &NlaBuffer<&'a T>) -> Result<Self, DecodeError> {
+impl<'a> Parseable<NlaBuffer<'a>> for WireguardAttribute {
+    fn parse(buf: &NlaBuffer<'a>) -> Result<Self, DecodeError> {
         let payload = buf.value();
         Ok(match buf.kind() {
             WGDEVICE_A_IFINDEX => Self::IfIndex(

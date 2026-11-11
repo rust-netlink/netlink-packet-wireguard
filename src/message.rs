@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 use netlink_packet_core::{
-    DecodeError, Emitable, ErrorContext, NlasIterator, Parseable,
+    DecodeError, Emitable, EncodeError, NlasIterator, Parseable,
     ParseableParametrized,
 };
 use netlink_packet_generic::{GenlFamily, GenlHeader};
 
 use crate::WireguardAttribute;
-
 const WG_CMD_GET_DEVICE: u8 = 0;
 const WG_CMD_SET_DEVICE: u8 = 1;
 
@@ -60,12 +59,8 @@ impl GenlFamily for WireguardMessage {
 }
 
 impl Emitable for WireguardMessage {
-    fn emit(&self, buffer: &mut [u8]) {
-        self.attributes.as_slice().emit(buffer)
-    }
-
-    fn buffer_len(&self) -> usize {
-        self.attributes.as_slice().buffer_len()
+    fn emit_value(&self, out: &mut Vec<u8>) -> Result<(), EncodeError> {
+        self.attributes.as_slice().emit(out)
     }
 }
 
@@ -85,11 +80,8 @@ fn parse_attributes(
     buf: &[u8],
 ) -> Result<Vec<WireguardAttribute>, DecodeError> {
     let mut attributes = Vec::new();
-    let error_msg = "failed to parse wireguard netlink attributes";
-    for nla in NlasIterator::new(buf) {
-        let nla = &nla.context(error_msg)?;
-        let parsed = WireguardAttribute::parse(nla)?;
-        attributes.push(parsed);
+    for nla in NlasIterator::new(buf)? {
+        attributes.push(WireguardAttribute::parse(&nla)?);
     }
     Ok(attributes)
 }
