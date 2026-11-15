@@ -5,6 +5,7 @@ mod common;
 use std::env::args;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
+use libc::NETLINK_GENERIC;
 use netlink_packet_core::{
     Emitable, NetlinkMessage, NetlinkPayload, NLM_F_DUMP, NLM_F_REQUEST,
 };
@@ -13,7 +14,7 @@ use netlink_packet_wireguard::{
     WireguardAllowedIpAttr, WireguardAttribute, WireguardCmd, WireguardMessage,
     WireguardPeerAttribute,
 };
-use netlink_sys::{protocols::NETLINK_GENERIC, Socket, SocketAddr};
+use netlink_sys::{Socket, SocketAddr};
 
 fn main() {
     let argv: Vec<String> = args().collect();
@@ -22,7 +23,7 @@ fn main() {
         return;
     }
 
-    let mut socket = Socket::new(NETLINK_GENERIC).unwrap();
+    let mut socket = Socket::new(NETLINK_GENERIC as isize).unwrap();
     socket.bind_auto().unwrap();
     socket.connect(&SocketAddr::new(0, 0)).unwrap();
 
