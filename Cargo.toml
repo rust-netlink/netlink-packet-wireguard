@@ -13,8 +13,8 @@ description = "Wireguard generic netlink packet definitions"
 [dependencies]
 libc = "0.2.98"
 log = "0.4.14"
-netlink-packet-generic = { git = "https://github.com/rust-netlink/netlink-packet-generic", branch = "main" }
-netlink-packet-core = "1.0.0-rc1"
+netlink-packet-generic = "1.0.0-rc1"
+netlink-packet-core = "1.0.0-rc2"
 bitflags = "2"
 
 [dev-dependencies]
