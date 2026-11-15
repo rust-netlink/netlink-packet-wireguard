@@ -9,6 +9,7 @@ use std::{
 };
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
+use libc::NETLINK_GENERIC;
 use netlink_packet_core::{
     Emitable, NetlinkMessage, NetlinkPayload, NLM_F_ACK, NLM_F_REQUEST,
 };
@@ -18,9 +19,7 @@ use netlink_packet_wireguard::{
     WireguardAttribute, WireguardCmd, WireguardMessage, WireguardPeer,
     WireguardPeerAttribute,
 };
-use netlink_sys::{
-    protocols::NETLINK_GENERIC, Socket, SocketAddr as NlSocketAddr,
-};
+use netlink_sys::{Socket, SocketAddr as NlSocketAddr};
 
 fn main() {
     let argv: Vec<String> = args().collect();
@@ -39,7 +38,7 @@ fn main() {
         .try_into()
         .unwrap();
 
-    let mut socket = Socket::new(NETLINK_GENERIC).unwrap();
+    let mut socket = Socket::new(NETLINK_GENERIC as isize).unwrap();
     socket.bind_auto().unwrap();
     socket.connect(&NlSocketAddr::new(0, 0)).unwrap();
 
